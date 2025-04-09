@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sharing Helper: Alexis & Addelyn</title>
+  <style>
+    body {
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+      text-align: center;
+      background: linear-gradient(to right, #fdf6e3, #ffe4ec);
+      padding: 20px;
+      transition: background-color 0.5s;
+    }
+    h1 {
+      color: #ff3399;
+      font-size: 3em;
+      text-shadow: 2px 2px #ffccff;
+    }
+    button {
+      font-size: 2em;
+      margin: 10px;
+      padding: 15px 25px;
+      border: none;
+      border-radius: 15px;
+      background: linear-gradient(to top, #ffb6c1, #fff);
+      color: #ff1493;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.3s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    }
+    button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 10px rgba(0,0,0,0.3);
+    }
+    .letter {
+      font-size: 3.5em;
+      color: white;
+      background-color: gray;
+      padding: 20px 25px;
+      border-radius: 15px;
+      transition: background-color 0.3s;
+      display: inline-block;
+      margin: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    .timer {
+      font-size: 2.5em;
+      margin-top: 20px;
+      color: #cc0066;
+      font-weight: bold;
+    }
+    #fishbowl {
+      width: 160px;
+      height: 140px;
+      border: 6px solid #00bfff;
+      border-radius: 50% 50% 40% 40% / 50% 50% 60% 60%;
+      margin: 20px auto;
+      background-color: #87cefa;
+      position: relative;
+      overflow: hidden;
+    }
+    #water {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #1e90ff;
+      transition: height 1s linear;
+    }
+    #fish {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2em;
+      transition: transform 0.3s ease-in-out, opacity 0.3s;
+    }
+    .dead-fish {
+      transform: translateX(-50%) rotate(90deg);
+      opacity: 0.5;
+    }
+    .bouncing {
+      animation: bounce 0.5s infinite alternate;
+    }
+    @keyframes bounce {
+      0% { transform: translateX(-50%) translateY(0); }
+      100% { transform: translateX(-50%) translateY(-10px); }
+    }
+    .flash {
+      animation: flash 0.5s alternate infinite;
+    }
+    @keyframes flash {
+      from { background-color: #ffcccc; }
+      to { background-color: #ff9999; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Sharing Helper</h1>
+  <button onclick="chooseTurn()">Whose Turn Is It?</button>
+  <p id="turnDisplay"></p>
+  <p id="timerDisplay" class="timer"></p>
+
+  <div id="fishbowl">
+    <div id="water"></div>
+    <div id="fish">🐟</div>
+  </div>
+
+  <div class="name-lights">
+    <div id="alexisName"></div>
+    <div id="addelynName"></div>
+  </div>
+
+  <script>
+    let timer;
+    const switchSound = new Audio('https://www.soundjay.com/button/beep-07.mp3');
+    const bounceSound = new Audio('https://www.soundjay.com/button/button-16.mp3');
+
+    function chooseTurn() {
+      const name = Math.random() < 0.5 ? "Alexis" : "Addelyn";
+      const turnDisplay = document.getElementById("turnDisplay");
+      turnDisplay.textContent = `It's ${name}'s turn!`;
+      turnDisplay.style.opacity = 1;
+      turnDisplay.style.fontWeight = '900';
+      turnDisplay.style.fontSize = '3em';
+      setTimeout(() => {
+        turnDisplay.style.opacity = 0;
+      }, 3000);
+    }
+
+    function startTimer() {
+      let seconds = 30;
+      const display = document.getElementById("timerDisplay");
+      const water = document.getElementById("water");
+      const fish = document.getElementById("fish");
+      display.textContent = `Sharing time: ${seconds}s`;
+      water.style.height = '100%';
+      fish.classList.remove("dead-fish", "bouncing");
+
+      clearInterval(timer);
+      timer = setInterval(() => {
+        seconds--;
+        display.textContent = `Sharing time: ${seconds}s`;
+        water.style.height = `${(seconds / 30) * 100}%`;
+        if (seconds <= 0) {
+          clearInterval(timer);
+          display.textContent = "Time to switch! Click the bowl!";
+          document.body.classList.add("flash");
+          water.style.height = '0%';
+          water.style.backgroundColor = '#dc143c';
+          fish.classList.add("dead-fish", "bouncing");
+          bounceSound.play();
+        }
+      }, 1000);
+    }
+
+    document.getElementById("fishbowl").addEventListener("click", () => {
+      document.body.classList.remove("flash");
+      document.getElementById("water").style.backgroundColor = '#1e90ff';
+      document.getElementById("fish").classList.remove("dead-fish", "bouncing");
+      switchSound.play();
+      startTimer();
+    });
+
+    function toggleName(name) {
+      const nameStr = name.toUpperCase();
+      const container = document.getElementById(`${name.toLowerCase()}Name`);
+      container.innerHTML = '';
+      for (let i = 0; i < nameStr.length; i++) {
+        const span = document.createElement('span');
+        span.classList.add('letter');
+        span.textContent = nameStr[i];
+        span.addEventListener('click', () => {
+          if (span.classList.contains('on')) {
+            span.style.backgroundColor = 'gray';
+            span.classList.remove('on');
+          } else {
+            const colors = ['#ff69b4', '#ffa07a', '#ff6347', '#40e0d0', '#dda0dd', '#90ee90', '#f0e68c'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            span.style.backgroundColor = color;
+            span.classList.add('on');
+          }
+        });
+        container.appendChild(span);
+      }
+    }
+
+    function animateFishSwimming() {
+      const fish = document.getElementById("fish");
+      let direction = 1;
+      setInterval(() => {
+        let currentLeft = parseFloat(fish.style.left || '50');
+        currentLeft += direction * 2;
+        if (currentLeft > 80 || currentLeft < 20) direction *= -1;
+        fish.style.left = `${currentLeft}%`;
+        fish.style.transform = `translateX(-50%) scaleX(${direction})`;
+      }, 300);
+    }
+
+    window.addEventListener('load', () => {
+      toggleName('Alexis');
+      toggleName('Addelyn');
+      animateFishSwimming();
+    });
+  </script>
+</body>
+</html>
