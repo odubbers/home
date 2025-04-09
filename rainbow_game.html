@@ -154,9 +154,16 @@
     let lock = false;
 
     const imageMap = {
-      default: "url('placeholder-default.png')",
-      win: "url('placeholder-win.png')",
-      lose: "url('placeholder-lose.png')"
+      alexis: {
+        default: "url('alexis-default.png')",
+        win: "url('alexis-win.png')",
+        lose: "url('alexis-lose.png')"
+      },
+      addelyn: {
+        default: "url('addelyn-default.png')",
+        win: "url('addelyn-win.png')",
+        lose: "url('addelyn-lose.png')"
+      }
     };
 
     function getRandomColor() {
@@ -193,7 +200,7 @@
         const photo = document.getElementById(`${name}-photo`);
         photo.style.borderColor = currentColor;
         photo.classList.remove("active");
-        photo.style.backgroundImage = imageMap.default;
+        photo.style.backgroundImage = imageMap[name].default;
         document.getElementById(`${name}-name`).style.color = currentColor;
       });
 
@@ -225,13 +232,13 @@
         const photo = document.getElementById(`${playerName}-photo`);
         const otherPhoto = document.getElementById(`${otherPlayer}-photo`);
         photo.classList.add("active");
-        photo.style.backgroundImage = imageMap.win;
-        otherPhoto.style.backgroundImage = imageMap.lose;
+        photo.style.backgroundImage = imageMap[playerName].win;
+        otherPhoto.style.backgroundImage = imageMap[otherPlayer].lose;
         setTimeout(showCountdown, 2000);
       } else {
         button.classList.add("wrong");
         const photo = document.getElementById(`${playerName}-photo`);
-        photo.style.backgroundImage = imageMap.lose;
+        photo.style.backgroundImage = imageMap[playerName].lose;
       }
     }
 
