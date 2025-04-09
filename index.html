@@ -5,83 +5,171 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>My GitHub Projects</title>
   <style>
-    body {
+    html, body {
       margin: 0;
-      background: linear-gradient(to bottom right, #1e1e2f, #3a3a5f);
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
+      background: #0f0f1f;
       font-family: sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      position: relative;
     }
-    .phone {
-      width: 320px;
-      height: 640px;
-      background: #000;
-      border-radius: 40px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.6);
-      padding: 20px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .screen {
-      background: #111;
-      flex: 1;
-      border-radius: 20px;
-      padding: 16px;
+    .app-grid {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      grid-gap: 16px;
-      box-sizing: border-box;
+      grid-template-columns: repeat(4, 100px);
+      grid-gap: 25px;
+      z-index: 2;
     }
     .app-icon {
-      width: 60px;
-      height: 60px;
+      width: 80px;
+      height: 80px;
       background: #2c2c3c;
       border-radius: 14px;
       box-shadow: inset 0 0 5px rgba(255,255,255,0.1);
-      transition: transform 0.2s;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 12px;
+      font-weight: bold;
+      transition: transform 0.2s, background 0.3s, color 0.3s;
     }
     .app-icon:hover {
       transform: scale(1.1);
     }
-    .notch {
-      height: 30px;
-      background: #000;
-      border-bottom-left-radius: 20px;
-      border-bottom-right-radius: 20px;
-      margin: 0 auto 10px;
-      width: 180px;
-    }
-    .bottom-bar {
-      height: 50px;
-      background: #000;
-      border-top-left-radius: 20px;
-      border-top-right-radius: 20px;
-      margin-top: 10px;
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
     }
   </style>
 </head>
 <body>
-  <div class="phone">
-    <div class="notch"></div>
-    <div class="screen">
-      <div class="app-icon"><a href="sharinghelper.html">Addy Lexie</a></div>
-      <div class="app-icon"></div>
-      <div class="app-icon"></div>
-      <div class="app-icon"></div>
-      <div class="app-icon"></div>
-      <div class="app-icon"></div>
-      <div class="app-icon"></div>
-      <div class="app-icon"></div>
-      <div class="app-icon"></div>
-      <div class="app-icon"></div>
-      <div class="app-icon"></div>
-      <div class="app-icon"></div>
-    </div>
-    <div class="bottom-bar"></div>
+  <canvas id="background"></canvas>
+  <div class="app-grid" id="appGrid">
+    <div class="app-icon">Button One</div>
+    <div class="app-icon">Button Two</div>
+    <div class="app-icon">Button Three</div>
+    <div class="app-icon">Button Four</div>
+    <div class="app-icon">Button Five</div>
+    <div class="app-icon">Button Six</div>
+    <div class="app-icon">Button Seven</div>
+    <div class="app-icon">Button Eight</div>
+    <div class="app-icon">Button Nine</div>
+    <div class="app-icon">Button Ten</div>
+    <div class="app-icon">Button Eleven</div>
+    <div class="app-icon">Button Twelve</div>
   </div>
+
+  <script>
+    const canvas = document.getElementById("background");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const icons = document.querySelectorAll('.app-icon');
+    const vibrantColors = ["#ff4b5c", "#4cd137", "#00a8ff", "#fbc531", "#9c88ff", "#e84118"];
+
+    let currentColor = vibrantColors[Math.floor(Math.random() * vibrantColors.length)];
+
+    let ball = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      dx: 2,
+      dy: 1.5,
+      radius: 40
+    };
+
+    function drawBall() {
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = currentColor;
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawFirework(x, y) {
+      for (let i = 0; i < 20; i++) {
+        const angle = Math.random() * 2 * Math.PI;
+        const speed = Math.random() * 4 + 2;
+        const fx = x + Math.cos(angle) * speed * 10;
+        const fy = y + Math.sin(angle) * speed * 10;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(fx, fy);
+        ctx.strokeStyle = `hsl(${Math.random() * 360}, 100%, 70%)`;
+        ctx.stroke();
+      }
+    }
+
+    function resetBall() {
+      ball.x = Math.random() * canvas.width;
+      ball.y = Math.random() * canvas.height;
+      ball.dx = (Math.random() - 0.5) * 4;
+      ball.dy = (Math.random() - 0.5) * 4;
+    }
+
+    function changeThemeColor() {
+      currentColor = vibrantColors[Math.floor(Math.random() * vibrantColors.length)];
+      icons.forEach(icon => icon.style.color = currentColor);
+    }
+
+    canvas.addEventListener("click", (e) => {
+      const dist = Math.hypot(e.clientX - ball.x, e.clientY - ball.y);
+      if (dist < ball.radius) {
+        drawFirework(ball.x, ball.y);
+        changeThemeColor();
+        resetBall();
+      }
+    });
+
+    function checkCollision(x, y) {
+      const dist = Math.hypot(x - ball.x, y - ball.y);
+      if (dist < ball.radius) {
+        const angle = Math.atan2(ball.y - y, ball.x - x);
+        const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+        ball.dx = Math.cos(angle) * speed;
+        ball.dy = Math.sin(angle) * speed;
+        changeThemeColor();
+      }
+    }
+
+    canvas.addEventListener("mousemove", (e) => {
+      checkCollision(e.clientX, e.clientY);
+    });
+
+    canvas.addEventListener("touchmove", (e) => {
+      if (e.touches.length > 0) {
+        checkCollision(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ball.x += ball.dx;
+      ball.y += ball.dy;
+
+      if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) ball.dx *= -1;
+      if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) ball.dy *= -1;
+
+      drawBall();
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+  </script>
 </body>
 </html>
