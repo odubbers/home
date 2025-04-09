@@ -219,11 +219,14 @@
 
     function handleGuess(color, playerName, button) {
       if (lock) return;
+      const otherPlayer = playerName === "alexis" ? "addelyn" : "alexis";
       if (color === currentColor) {
         lock = true;
         const photo = document.getElementById(`${playerName}-photo`);
+        const otherPhoto = document.getElementById(`${otherPlayer}-photo`);
         photo.classList.add("active");
         photo.style.backgroundImage = imageMap.win;
+        otherPhoto.style.backgroundImage = imageMap.lose;
         setTimeout(showCountdown, 2000);
       } else {
         button.classList.add("wrong");
