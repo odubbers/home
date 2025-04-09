@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Match Game - Addelyn & Alexis</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+      background: #fff;
+    }
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+    }
+    .player-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .player-section.alexis {
+      transform: rotate(180deg);
+    }
+    .player-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    .player-photo {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background-color: #ccc;
+      border: 6px solid #999;
+      margin-bottom: 20px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, background-image 0.3s;
+      background-size: cover;
+      background-position: center;
+      z-index: 2;
+    }
+    .player-photo.active {
+      box-shadow: 0 0 20px 5px gold;
+      transform: scale(1.2);
+    }
+    .player-name {
+      font-size: 34px;
+      font-weight: bold;
+      transition: color 0.3s ease;
+    }
+    .color-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 0 10px;
+    }
+    .color-button {
+      width: 100px;
+      height: 100px;
+      font-size: 22px;
+      font-weight: bold;
+      border: 3px solid transparent;
+      border-radius: 16px;
+      cursor: pointer;
+      color: #fff;
+      transition: all 0.1s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .color-button:active {
+      transform: translateY(6px);
+    }
+    .color-button.wrong {
+      background: white !important;
+      color: red !important;
+      border-color: red !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+    }
+    .center-color {
+      height: 120px;
+      width: 120px;
+      border-radius: 50%;
+      margin: 0 auto;
+      margin-top: -10px;
+      margin-bottom: -10px;
+    }
+    .countdown {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+    .dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: #ccc;
+      transition: background-color 0.4s ease;
+    }
+    .dot.active {
+      background-color: black;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="player-section alexis">
+      <div class="player-info">
+        <div class="player-photo" id="alexis-photo"></div>
+        <div class="player-name" id="alexis-name">Alexis</div>
+        <div class="countdown" id="alexis-countdown"></div>
+      </div>
+      <div class="color-buttons" id="alexis-buttons"></div>
+    </div>
+
+    <div class="center-color" id="center-color"></div>
+
+    <div class="player-section addelyn">
+      <div class="player-info">
+        <div class="player-photo" id="addelyn-photo"></div>
+        <div class="player-name" id="addelyn-name">Addelyn</div>
+        <div class="countdown" id="addelyn-countdown"></div>
+      </div>
+      <div class="color-buttons" id="addelyn-buttons"></div>
+    </div>
+  </div>
+
+  <script>
+    const colors = ["red", "orange", "yellow", "green", "blue", "indigo", "violet"];
+    const shadowMap = {
+      red: "darkred",
+      orange: "#cc5200",
+      yellow: "#b38f00",
+      green: "darkgreen",
+      blue: "#003366",
+      indigo: "#3a0073",
+      violet: "#5e2d79"
+    };
+
+    let currentColor = "";
+    let lock = false;
+
+    const imageMap = {
+      default: "url('placeholder-default.png')",
+      win: "url('placeholder-win.png')",
+      lose: "url('placeholder-lose.png')"
+    };
+
+    function getRandomColor() {
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function showCountdown() {
+      ["addelyn", "alexis"].forEach(name => {
+        const container = document.getElementById(`${name}-countdown`);
+        container.innerHTML = "";
+        for (let i = 0; i < 3; i++) {
+          const dot = document.createElement("div");
+          dot.classList.add("dot");
+          container.appendChild(dot);
+        }
+      });
+      [0, 1, 2].forEach((i) => {
+        setTimeout(() => {
+          ["addelyn", "alexis"].forEach(name => {
+            const dots = document.getElementById(`${name}-countdown`).children;
+            dots[i].classList.add("active");
+          });
+        }, i * 500);
+      });
+      setTimeout(showNewColor, 1800);
+    }
+
+    function showNewColor() {
+      lock = false;
+      currentColor = getRandomColor();
+      document.getElementById("center-color").style.backgroundColor = currentColor;
+
+      ["addelyn", "alexis"].forEach(name => {
+        const photo = document.getElementById(`${name}-photo`);
+        photo.style.borderColor = currentColor;
+        photo.classList.remove("active");
+        photo.style.backgroundImage = imageMap.default;
+        document.getElementById(`${name}-name`).style.color = currentColor;
+      });
+
+      updateButtons("alexis-buttons", colors, "alexis");
+      updateButtons("addelyn-buttons", colors, "addelyn");
+    }
+
+    function updateButtons(containerId, buttonColors, playerName) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = "";
+      buttonColors.forEach(color => {
+        const btn = document.createElement("button");
+        btn.className = "color-button";
+        btn.style.backgroundColor = color;
+        btn.style.borderColor = color;
+        btn.style.boxShadow = `0 6px ${shadowMap[color]}`;
+        btn.style.textShadow = `1px 1px 2px ${shadowMap[color]}`;
+        btn.innerText = color.toUpperCase();
+        btn.onclick = () => handleGuess(color, playerName, btn);
+        container.appendChild(btn);
+      });
+    }
+
+    function handleGuess(color, playerName, button) {
+      if (lock) return;
+      if (color === currentColor) {
+        lock = true;
+        const photo = document.getElementById(`${playerName}-photo`);
+        photo.classList.add("active");
+        photo.style.backgroundImage = imageMap.win;
+        setTimeout(showCountdown, 2000);
+      } else {
+        button.classList.add("wrong");
+        const photo = document.getElementById(`${playerName}-photo`);
+        photo.style.backgroundImage = imageMap.lose;
+      }
+    }
+
+    window.onload = () => {
+      showNewColor();
+    }
+  </script>
+</body>
+</html>
+
