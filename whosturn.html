@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Caring Sharing</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom, #ffe9f3, #e0f7ff);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+    }
+
+    .container {
+      text-align: center;
+    }
+
+    .main-label {
+      font-size: 3em;
+      font-weight: bold;
+      color: #d36ca0;
+      margin-bottom: 20px;
+    }
+
+    .turn-circle {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: #ffdeec;
+      border: 8px solid #dda0dd;
+      box-shadow: 0 0 30px rgba(221, 160, 221, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.3s ease-in-out;
+    }
+
+    .turn-circle:hover {
+      box-shadow: 0 0 40px rgba(255, 105, 180, 0.8);
+    }
+
+    .thinking {
+      background: radial-gradient(circle, #ffecf5, #ffe4e1);
+    }
+
+    .question-mark {
+      font-size: 5em;
+      font-weight: bold;
+      color: purple;
+      animation: none;
+    }
+
+    .rotating {
+      animation: rotateQ 1s linear infinite;
+    }
+
+    @keyframes rotateQ {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .name-text {
+      font-size: 2em;
+      font-weight: bold;
+      color: #d36ca0;
+      margin-top: 10px;
+    }
+
+    .turn-image {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 6px solid #dda0dd;
+      display: none;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .visible {
+      display: block;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="main-label">Who's Turn?</div>
+    <div id="turnCircle" class="turn-circle">
+      <div id="thinkingIcon" class="question-mark">?</div>
+      <img id="turnImage" class="turn-image" src="" alt="child"/>
+      <div id="nameText" class="name-text"></div>
+    </div>
+  </div>
+
+  <audio id="winSound" src="win.wav"></audio>
+
+  <script>
+    const turnCircle = document.getElementById('turnCircle');
+    const turnImage = document.getElementById('turnImage');
+    const nameText = document.getElementById('nameText');
+    const thinkingIcon = document.getElementById('thinkingIcon');
+    const winSound = document.getElementById('winSound');
+
+    const options = [
+      { name: 'Alexis', image: 'alexis_default.png' },
+      { name: 'Addelyn', image: 'addelyn_default.png' }
+    ];
+
+    let isThinking = false;
+
+    turnCircle.addEventListener('click', () => {
+      if (isThinking) return;
+
+      isThinking = true;
+      turnCircle.classList.add('thinking');
+      thinkingIcon.classList.remove('hidden');
+      thinkingIcon.classList.add('rotating');
+      turnImage.classList.remove('visible');
+      nameText.textContent = '';
+
+      setTimeout(() => {
+        const chosen = options[Math.floor(Math.random() * options.length)];
+        turnImage.src = chosen.image;
+        turnImage.classList.add('visible');
+        nameText.textContent = chosen.name;
+        thinkingIcon.classList.remove('rotating');
+        thinkingIcon.classList.add('hidden');
+        turnCircle.classList.remove('thinking');
+        winSound.play();
+
+        setTimeout(() => {
+          nameText.textContent = '';
+          turnImage.classList.remove('visible');
+          thinkingIcon.classList.remove('hidden');
+          isThinking = false;
+        }, 4000); // Reset after 4 seconds
+
+      }, 2000); // "Thinking" duration
+    });
+  </script>
+</body>
+</html>
