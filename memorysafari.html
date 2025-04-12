@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animal Memory Match - Addelyn & Alexis</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+      background: linear-gradient(to top, #ffccff, #ffe6f2);
+    }
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 50px 20px 20px 20px;
+      position: relative;
+    }
+    .player-section {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-around;
+      width: 100%;
+      padding: 10px 0;
+      position: relative;
+    }
+    .player-profile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .player-photo {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 6px solid #999;
+      background-size: cover;
+      background-position: center;
+      margin-bottom: 12px;
+      transition: transform 0.3s, border-color 0.3s;
+    }
+    .player-photo.active {
+      transform: scale(1.2);
+      border-color: #00cc00;
+    }
+    .player-name {
+      font-size: 28px;
+      font-weight: bold;
+      color: #d63384;
+      margin-top: 6px;
+    }
+    .matched-animals {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .matched-animal {
+      width: 50px;
+      height: 50px;
+      background-size: cover;
+      background-position: center;
+      border: 2px solid #aaa;
+      border-radius: 8px;
+    }
+    .title {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translate(-50%, 0);
+      text-align: center;
+      padding-top: 20px;
+    }
+    .title img {
+      width: 220px;
+      height: auto;
+    }
+    .winner-popup {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      z-index: 20;
+      display: none;
+    }
+    .winner-popup img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      margin-bottom: 10px;
+    }
+    .winner-popup h2 {
+      font-size: 28px;
+      color: #8a2be2;
+      margin: 0;
+    }
+    .animal-popup {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 200px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 10;
+      display: none;
+    }
+    .grid-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 14px;
+      padding: 20px;
+      background: rgba(255,255,255,0.4);
+      border-radius: 16px;
+    }
+    .card {
+      width: 100px;
+      height: 100px;
+      background-image: url('card.png');
+      background-size: cover;
+      background-position: center;
+      border: 3px solid #ddd;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.3s;
+    }
+    .card.flipped {
+      transform: rotateY(180deg);
+    }
+    .card.matched {
+      visibility: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="player-section">
+      <div class="player-profile" id="alexis-profile">
+        <div class="player-photo" id="alexis-photo" style="background-image: url('alexis_default.png')"></div>
+        <div class="player-name">Alexis</div>
+        <div class="matched-animals" id="alexis-matches"></div>
+      </div>
+      <div class="title">
+        <img src="memorysafari.png" alt="Memory Safari">
+      </div>
+      <div class="player-profile" id="addelyn-profile">
+        <div class="player-photo" id="addelyn-photo" style="background-image: url('addelyn_default.png')"></div>
+        <div class="player-name">Addelyn</div>
+        <div class="matched-animals" id="addelyn-matches"></div>
+      </div>
+    </div>
+    <div class="grid-container">
+      <div class="grid" id="card-grid"></div>
+    </div>
+    <div class="animal-popup" id="animal-popup"></div>
+    <div class="winner-popup" id="winner-popup">
+      <img id="winner-image" src="" alt="Winner">
+      <h2 id="winner-message"></h2>
+    </div>
+  </div>
+
+  <script>
+    const animals = ["lion", "elephant", "rhino", "hyena", "monkey", "hippo", "parrot"];
+    let cardDeck = [];
+    let flippedCards = [];
+    let currentPlayer = "alexis";
+    let lockBoard = false;
+    let matchesFound = 0;
+    let score = { alexis: 0, addelyn: 0 };
+
+    const imageMap = {
+      alexis: {
+        default: "alexis_default.png",
+        win: "alexis_win.png",
+        lose: "alexis_lose.png"
+      },
+      addelyn: {
+        default: "addelyn_default.png",
+        win: "addelyn_win.png",
+        lose: "addelyn_lose.png"
+      }
+    };
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function buildDeck() {
+      cardDeck = shuffle([...animals, ...animals]);
+      const grid = document.getElementById("card-grid");
+      grid.innerHTML = "";
+      matchesFound = 0;
+      score = { alexis: 0, addelyn: 0 };
+      cardDeck.forEach((animal, index) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.dataset.animal = animal;
+        card.dataset.index = index;
+        card.addEventListener("click", () => flipCard(card));
+        grid.appendChild(card);
+      });
+    }
+
+    function playSound(file) {
+      const audio = new Audio(file);
+      audio.play();
+    }
+
+    function playRandomErrorSound() {
+      const errorFiles = ["errorbeep.mp3", "error2.mp3"];
+      const selected = errorFiles[Math.floor(Math.random() * errorFiles.length)];
+      playSound(selected);
+    }
+
+    function showAnimalPopup(animal, callback) {
+      const popup = document.getElementById("animal-popup");
+      popup.style.backgroundImage = `url(${animal}.png)`;
+      popup.style.display = "block";
+      setTimeout(() => {
+        popup.style.display = "none";
+        callback();
+      }, 1200);
+    }
+
+    function showWinnerPopup(winner) {
+      const popup = document.getElementById("winner-popup");
+      const image = document.getElementById("winner-image");
+      const message = document.getElementById("winner-message");
+      image.src = imageMap[winner].win;
+      message.textContent = `${winner.charAt(0).toUpperCase() + winner.slice(1)} Wins!`;
+      popup.style.display = "block";
+      setTimeout(() => {
+        popup.style.display = "none";
+        resetRound();
+      }, 2000);
+    }
+
+    function flipCard(card) {
+      if (lockBoard || card.classList.contains("flipped") || card.classList.contains("matched")) return;
+      card.classList.add("flipped");
+      card.style.backgroundImage = `url(${card.dataset.animal}.png)`;
+      playSound("flip.mp3");
+
+      flippedCards.push(card);
+
+      if (flippedCards.length === 2) {
+        lockBoard = true;
+        const [card1, card2] = flippedCards;
+
+        if (card1.dataset.animal === card2.dataset.animal) {
+          handleMatch(card1, card2);
+        } else {
+          handleMismatch(card1, card2);
+        }
+      }
+    }
+
+    function handleMatch(card1, card2) {
+      setTimeout(() => {
+        showAnimalPopup(card1.dataset.animal, () => {
+          card1.classList.add("matched");
+          card2.classList.add("matched");
+
+          const matchDisplay = document.getElementById(`${currentPlayer}-matches`);
+          const matchIcon = document.createElement("div");
+          matchIcon.className = "matched-animal";
+          matchIcon.style.backgroundImage = `url(${card1.dataset.animal}.png)`;
+          matchDisplay.appendChild(matchIcon);
+
+          playSound(`${card1.dataset.animal}.mp3`);
+          setPhotoState(currentPlayer, "win");
+
+          score[currentPlayer]++;
+          matchesFound++;
+
+          setTimeout(() => {
+            setPhotoState(currentPlayer, "default");
+            flippedCards = [];
+            lockBoard = false;
+            if (matchesFound === animals.length) {
+              const winner = score.alexis > score.addelyn ? "alexis" : "addelyn";
+              showWinnerPopup(winner);
+            }
+          }, 800);
+        });
+      }, 300);
+    }
+
+    function handleMismatch(card1, card2) {
+      playRandomErrorSound();
+      setPhotoState(currentPlayer, "lose");
+      setTimeout(() => {
+        card1.classList.remove("flipped");
+        card2.classList.remove("flipped");
+        card1.style.backgroundImage = "url('card.png')";
+        card2.style.backgroundImage = "url('card.png')";
+        setPhotoState(currentPlayer, "default");
+        flippedCards = [];
+        switchPlayer();
+        lockBoard = false;
+      }, 1200);
+    }
+
+    function setPhotoState(player, state) {
+      const photo = document.getElementById(`${player}-photo`);
+      photo.style.backgroundImage = `url(${imageMap[player][state]})`;
+    }
+
+    function switchPlayer() {
+      currentPlayer = currentPlayer === "alexis" ? "addelyn" : "alexis";
+      updateActiveProfile();
+    }
+
+    function updateActiveProfile() {
+      ["alexis", "addelyn"].forEach(name => {
+        const photo = document.getElementById(`${name}-photo`);
+        photo.classList.toggle("active", name === currentPlayer);
+      });
+    }
+
+    function resetRound() {
+      document.getElementById("alexis-matches").innerHTML = "";
+      document.getElementById("addelyn-matches").innerHTML = "";
+      currentPlayer = "alexis";
+      updateActiveProfile();
+      buildDeck();
+    }
+
+    window.onload = () => {
+      buildDeck();
+      updateActiveProfile();
+    };
+  </script>
+</body>
+</html>
