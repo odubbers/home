@@ -231,7 +231,7 @@
     }
 
     function playRandomErrorSound() {
-      const errorFiles = ["errorbeep.mp3", "error2.mp3"];
+      const errorFiles = ["errorbeep.wav", "error2.mp3"];
       const selected = errorFiles[Math.floor(Math.random() * errorFiles.length)];
       playSound(selected);
     }
@@ -263,7 +263,7 @@
       if (lockBoard || card.classList.contains("flipped") || card.classList.contains("matched")) return;
       card.classList.add("flipped");
       card.style.backgroundImage = `url(${card.dataset.animal}.png)`;
-      playSound("flip.mp3");
+      playSound("flip.wav");
 
       flippedCards.push(card);
 
