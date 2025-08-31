@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Crystal Task Ball</title>
+<style>
+  :root{
+    --bg:#000;
+    --purple:#6b3ea8;
+    --purple-deep:#3a1e64;
+    --accent:#b38cff;
+    --glass:#221133;
+  }
+  html,body{height:100%;}
+  body{
+    margin:0; display:grid; place-items:center; background:var(--bg); color:#eee;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    overflow:hidden;
+  }
+
+  /* --- Crystal ball scene --- */
+  .scene{ position:relative; width:min(90vmin,720px); aspect-ratio:1/1; }
+
+  .ball{
+    position:absolute; inset:0; margin:auto; border-radius:50%;
+    background:
+      radial-gradient(60% 60% at 40% 40%, rgba(255,255,255,0.12), transparent 60%),
+      radial-gradient(70% 70% at 65% 65%, rgba(255,255,255,0.08), transparent 60%),
+      radial-gradient(120% 120% at 50% 100%, rgba(255,255,255,0.05), transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(171,131,255,0.25), rgba(65,22,102,0.95) 55%, rgba(0,0,0,0.95) 100%);
+    box-shadow:
+      0 0 40px 10px rgba(129, 77, 255, 0.25),
+      inset 0 0 60px rgba(200,180,255,0.2),
+      inset 0 0 160px rgba(120,60,200,0.35);
+    cursor:pointer; outline:none; user-select:none;
+    transition: transform .5s ease; 
+  }
+  .ball::after{ /* base/stand */
+    content:""; position:absolute; left:50%; bottom:-6%; transform:translateX(-50%);
+    width:58%; height:12%; border-radius:50%/60% 60% 40% 40%;
+    background: linear-gradient(180deg, #1d102b, #0b0611);
+    filter: drop-shadow(0 -4px 10px rgba(180, 140, 255, .15));
+  }
+  .ball:hover{ transform: scale(1.02); }
+
+  /* Magic pulse when activated */
+  .ball.magic{ animation: pulse 900ms ease-out 1; }
+  @keyframes pulse{ 0%{box-shadow:0 0 40px 10px rgba(179,140,255,.25), inset 0 0 60px rgba(200,180,255,.2), inset 0 0 160px rgba(120,60,200,.35)}
+    30%{box-shadow:0 0 80px 25px rgba(179,140,255,.5), inset 0 0 120px rgba(220,200,255,.35), inset 0 0 220px rgba(160,90,240,.5)}
+    100%{box-shadow:0 0 40px 10px rgba(179,140,255,.25), inset 0 0 60px rgba(200,180,255,.2), inset 0 0 160px rgba(120,60,200,.35)} }
+
+  /* Subtle fog swirl */
+  .fog{
+    position:absolute; inset:0; border-radius:50%; mix-blend-mode:screen; pointer-events:none;
+    background:
+      radial-gradient(40% 55% at 30% 35%, rgba(180,150,255,.12), transparent 70%),
+      radial-gradient(50% 35% at 70% 65%, rgba(140,110,220,.10), transparent 75%);
+    filter: blur(18px) saturate(120%);
+    animation: swirl 12s ease-in-out infinite alternate;
+  }
+  @keyframes swirl{ from{transform:translate(0,0) rotate(0)} to{transform:translate(0,-4%) rotate(2deg)} }
+
+  /* Sparkles */
+  .sparkle{ position:absolute; width:6px; height:6px; border-radius:50%;
+    background: radial-gradient(circle, #fff, rgba(255,255,255,0) 65%);
+    opacity:.0; filter: drop-shadow(0 0 6px rgba(200,180,255,.9));
+    animation: twinkle var(--dur) linear var(--delay) infinite;
+  }
+  @keyframes twinkle{ 0%{opacity:0; transform:scale(.6)} 10%{opacity:.9; transform:scale(1)} 20%{opacity:0; transform:scale(.6)} 100%{opacity:0; transform:scale(.6)} }
+
+  /* HUD hint below */
+  .hint{ position:absolute; left:50%; bottom:2.5%; transform:translateX(-50%);
+    font-size:clamp(12px,1.6vmin,18px); color:#cbb7ff; opacity:.7; letter-spacing:.05em; }
+
+  /* --- Overlay/modal --- */
+  .overlay{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.5); }
+  .overlay.show{ display:grid; }
+
+  .modal{ 
+    width:min(90vw,720px); border-radius:16px; padding:24px; 
+    background: rgba(20, 10, 30, .85);
+    border:1px solid rgba(180,140,255,.25);
+    box-shadow: 0 10px 30px rgba(0,0,0,.6), inset 0 0 80px rgba(120,60,200,.18);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    text-align:center;
+  }
+  .title{ font-size: clamp(18px, 4.8vmin, 34px); font-weight:700; color:#e9ddff; margin:0 0 8px; }
+  .subtitle{ font-size: clamp(14px, 2.2vmin, 18px); color:#c7b6ff; margin:0 0 18px; }
+
+  .controls{ display:flex; justify-content:center; gap:12px; flex-wrap:wrap; }
+  button{ appearance:none; border:none; padding:12px 18px; border-radius:12px; cursor:pointer; font-weight:700; letter-spacing:.02em; }
+  .btn-primary{ color:#0a0512; background:linear-gradient(180deg, #d8c7ff, #b38cff); box-shadow:0 6px 18px rgba(179,140,255,.35); }
+  .btn-ghost{ color:#d9cfff; background:transparent; border:1px solid rgba(200,180,255,.35); }
+  .btn-danger{ color:#fff; background:#a43f3f; }
+
+  /* Timer style */
+  .time{ font-variant-numeric:tabular-nums; font-size: clamp(28px, 8vmin, 64px); color:#fff; margin: 6px 0 18px; }
+  .task{ font-size: clamp(16px, 2.7vmin, 22px); color:#e9ddff; margin: 6px 0 14px; }
+
+  /* Small watermark */
+  .brand{ position:fixed; right:10px; bottom:8px; font-size:12px; color:#6951a1; opacity:.6; }
+
+</style>
+</head>
+<body>
+  <div class="scene" aria-live="polite">
+    <div class="ball" id="ball" role="button" aria-label="Crystal ball. Tap to receive a task." tabindex="0">
+      <div class="fog"></div>
+      <!-- Sparkles created by JS -->
+    </div>
+    <div class="hint">Tap the crystal ball ✨</div>
+  </div>
+
+  <!-- Overlay / Modal -->
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <div class="modal" id="modal">
+      <h1 class="title" id="modalTitle">Your Task</h1>
+      <div class="task" id="taskText">…</div>
+      <div class="time" id="time">00:00</div>
+      <div class="subtitle" id="subText"></div>
+      <div class="controls" id="controls">
+        <button class="btn-primary" id="beginBtn">Begin</button>
+        <button class="btn-ghost" id="anotherBtn">New Task</button>
+        <button class="btn-ghost" id="closeBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="brand">Crystal Task Ball</div>
+
+<script>
+(() => {
+  // ====== CONFIG: 10 tasks with fixed durations (seconds) ======
+  // Edit the items below. Each label always uses its set duration.
+  const TASKS = [
+    { label: "Sweep the floor", seconds: 2 * 60 },
+    { label: "Tidy the desk", seconds: 90 },
+    { label: "Wipe kitchen counter", seconds: 75 },
+    { label: "Quick stretch", seconds: 60 },
+    { label: "Drink water", seconds: 45 },
+    { label: "Do 10 squats", seconds: 40 },
+    { label: "Take deep breaths", seconds: 30 },
+    { label: "Sort 10 emails", seconds: 120 },
+    { label: "Put laundry in", seconds: 110 },
+    { label: "Declutter one shelf", seconds: 100 },
+  ];
+
+  // ====== Elements ======
+  const ball = document.getElementById('ball');
+  const overlay = document.getElementById('overlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const taskText = document.getElementById('taskText');
+  const timeText = document.getElementById('time');
+  const subText = document.getElementById('subText');
+  const controls = document.getElementById('controls');
+  const beginBtn = document.getElementById('beginBtn');
+  const closeBtn = document.getElementById('closeBtn');
+  const anotherBtn = document.getElementById('anotherBtn');
+
+  // ====== State ======
+  let currentTask = null;
+  let timerId = null;
+  let remaining = 0;
+
+  // ====== Helpers ======
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmt = (sec) => `${pad(Math.floor(sec/60))}:${pad(Math.floor(sec%60))}`;
+
+  function pickTask(){
+    const idx = Math.floor(Math.random() * TASKS.length);
+    return TASKS[idx];
+  }
+
+  function showTask(task){
+    overlay.classList.add('show');
+    overlay.setAttribute('aria-hidden','false');
+    modalTitle.textContent = 'Your Task';
+    taskText.textContent = `You need to ${task.label.toLowerCase()}.`;
+    timeText.textContent = fmt(task.seconds);
+    subText.textContent = 'When you\'re ready, begin the countdown.';
+    beginBtn.style.display = '';
+    anotherBtn.style.display = '';
+    closeBtn.style.display = '';
+  }
+
+  function showTimer(){
+    overlay.classList.add('show');
+    overlay.setAttribute('aria-hidden','false');
+    modalTitle.textContent = 'Timer';
+    subText.textContent = 'Stay focused — you\'ve got this!';
+    beginBtn.style.display = 'none';
+    anotherBtn.style.display = 'none';
+    closeBtn.style.display = '';
+  }
+
+  function clearTimer(){
+    if (timerId){ cancelAnimationFrame(timerId); timerId = null; }
+  }
+
+  // Play a short single beep using WebAudio (no external file)
+  function playChime(){
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = 880; // A5
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+      o.connect(g).connect(ctx.destination);
+      o.start();
+      o.stop(ctx.currentTime + 0.4);
+    }catch(e){ /* ignore */ }
+  }
+
+  function startCountdown(seconds){
+    remaining = seconds;
+    let last = performance.now();
+    function tick(now){
+      const dt = Math.min(2, (now - last)/1000); // clamp just in case
+      last = now;
+      remaining -= dt;
+      if (remaining <= 0){
+        timeText.textContent = '00:00';
+        clearTimer();
+        playChime();
+        hideOverlay();
+        return;
+      }
+      timeText.textContent = fmt(remaining);
+      timerId = requestAnimationFrame(tick);
+    }
+    timerId = requestAnimationFrame(tick);
+  }
+
+  function hideOverlay(){
+    clearTimer();
+    overlay.classList.remove('show');
+    overlay.setAttribute('aria-hidden','true');
+  }
+
+  // ====== Sparkles inside the ball ======
+  function seedSparkles(n=30){
+    const rect = ball.getBoundingClientRect();
+    const r = rect.width/2; // assume circle
+    for (let i=0;i<n;i++){
+      const s = document.createElement('span');
+      s.className = 'sparkle';
+      // Place within circle
+      const angle = Math.random()*Math.PI*2;
+      const radius = Math.sqrt(Math.random()) * (r*0.88);
+      const x = r + Math.cos(angle)*radius;
+      const y = r + Math.sin(angle)*radius;
+      s.style.left = `calc(${(x/r*50)}% - 3px)`; // center 6px dot
+      s.style.top  = `calc(${(y/r*50)}% - 3px)`;
+      s.style.setProperty('--dur', (2 + Math.random()*3).toFixed(2) + 's');
+      s.style.setProperty('--delay', (Math.random()*3).toFixed(2) + 's');
+      ball.appendChild(s);
+    }
+  }
+
+  // ====== Interactions ======
+  function requestTask(){
+    if (timerId) return; // ignore while running
+    ball.classList.add('magic');
+    setTimeout(()=> ball.classList.remove('magic'), 900);
+    currentTask = pickTask();
+    showTask(currentTask);
+  }
+
+  ball.addEventListener('click', requestTask);
+  ball.addEventListener('keydown', (e)=>{ if (e.key==='Enter' || e.key===' ') { e.preventDefault(); requestTask(); } });
+
+  beginBtn.addEventListener('click', ()=>{
+    if (!currentTask) return;
+    showTimer();
+    startCountdown(currentTask.seconds);
+  });
+  anotherBtn.addEventListener('click', ()=>{
+    if (timerId) return;
+    currentTask = pickTask();
+    showTask(currentTask);
+  });
+  closeBtn.addEventListener('click', ()=>{ if (!timerId) hideOverlay(); });
+  overlay.addEventListener('click', (e)=>{ if (e.target === overlay && !timerId) hideOverlay(); });
+
+  // Init
+  seedSparkles(36);
+  // On resize, refresh sparkles positions lightly (optional; simple approach = no refresh).
+})();
+</script>
+</body>
+</html>
