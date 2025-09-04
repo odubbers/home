@@ -183,7 +183,7 @@
   function showTask(task){
     overlay.classList.add('show');
     overlay.setAttribute('aria-hidden','false');
-    modalTitle.textContent = 'Your Task';
+    modalTitle.textContent = 'You're dared to...';
     taskText.textContent = `${task.label.toLowerCase()}.`;
     timeText.textContent = fmt(task.seconds);
     beginBtn.style.display = '';
