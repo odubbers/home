@@ -111,7 +111,7 @@
   <!-- Overlay / Modal -->
   <div class="overlay" id="overlay" aria-hidden="true">
     <div class="modal" id="modal">
-      <h1 class="title" id="modalTitle">Your Task</h1>
+      <h1 class="title" id="modalTitle">You're dared to...</h1>
       <div class="task" id="taskText">…</div>
       <div class="time" id="time">00:00</div>
       <div class="controls" id="controls">
@@ -184,7 +184,7 @@
     overlay.classList.add('show');
     overlay.setAttribute('aria-hidden','false');
     modalTitle.textContent = 'Your Task';
-    taskText.textContent = `You need to ${task.label.toLowerCase()}.`;
+    taskText.textContent = `${task.label.toLowerCase()}.`;
     timeText.textContent = fmt(task.seconds);
     beginBtn.style.display = '';
     skipBtn.style.display = '';
