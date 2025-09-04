@@ -125,7 +125,7 @@
   <div class="brand">Crystal Task Ball</div>
 
   <!-- External chime file referenced from site root -->
-  <audio id="chime" src="/chime.wav" preload="auto"></audio>
+  <audio id="chime" src="/chime.mp3" preload="auto"></audio>
 
 <script>
 (() => {
@@ -205,8 +205,19 @@
   }
 
   async function playChime(){
-    try{ await chime.play(); }catch(e){ /* ignore autoplay block */ }
-  }
+    try {
+      // Play once
+      await chime.play();
+  
+      // When it ends, reset and play again
+      chime.onended = () => {
+        chime.currentTime = 0;
+        chime.play();
+      };
+    } catch(e){
+      // ignore autoplay block
+    }
+  }}
 
   function startCountdown(seconds){
     if (timerRunning) return;
