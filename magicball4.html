@@ -129,11 +129,10 @@
 
 <script>
 (() => {
-  // ====== CONFIG: 10 tasks with fixed durations (seconds) ======
-  // Edit the items below. Each label always uses its set duration.
+  // ====== CONFIG: tasks with fixed durations ======
   const TASKS = [
     { label: "Massage, upper body only. Him on Her", seconds: 45 },
-    { label: "Massage, upper body only. Her on Him,", seconds: 45 },
+    { label: "Massage, upper body only. Her on Him", seconds: 45 },
     { label: "Kiss neck and immediate area Him on Her", seconds: 30 },
     { label: "Kiss neck and immediate area Her on Him", seconds: 30 },
     { label: "Blowjob", seconds: 60 },
@@ -161,6 +160,8 @@
   let timerId = null;
   let remaining = 0;
   let skipLeft = 2;
+  let isThinking = false;
+  let timerRunning = false;
 
   // ====== Helpers ======
   const pad = (n) => String(n).padStart(2, '0');
@@ -175,15 +176,12 @@
     }
   };
 
-  function pickTask(){
-    const idx = Math.floor(Math.random() * TASKS.length);
-    return TASKS[idx];
-  }
+  function pickTask(){ return TASKS[Math.floor(Math.random() * TASKS.length)]; }
 
   function showTask(task){
     overlay.classList.add('show');
     overlay.setAttribute('aria-hidden','false');
-    modalTitle.textContent = 'You're dared to...';
+    modalTitle.textContent = "You're dared to...";
     taskText.textContent = `${task.label.toLowerCase()}.`;
     timeText.textContent = fmt(task.seconds);
     beginBtn.style.display = '';
@@ -203,19 +201,25 @@
 
   function clearTimer(){
     if (timerId){ cancelAnimationFrame(timerId); timerId = null; }
+    timerRunning = false;
   }
 
   async function playChime(){
-    try{ await chime.play(); }catch(e){ /* autoplay might block; ignore */ }
+    try{ await chime.play(); }catch(e){ /* ignore autoplay block */ }
   }
 
   function startCountdown(seconds){
+    if (timerRunning) return;
+    timerRunning = true;
     remaining = seconds;
     let last = performance.now();
-    function tick(now){
-      const dt = Math.min(2, (now - last)/1000);
+
+    const loop = (now) => {
+      if (!timerRunning) return;
+      const dt = Math.min(0.2, (now - last)/1000);
       last = now;
       remaining -= dt;
+
       if (remaining <= 0){
         timeText.textContent = '00:00';
         clearTimer();
@@ -223,10 +227,12 @@
         hideOverlay();
         return;
       }
+
       timeText.textContent = fmt(remaining);
-      timerId = requestAnimationFrame(tick);
-    }
-    timerId = requestAnimationFrame(tick);
+      timerId = requestAnimationFrame(loop);
+    };
+
+    timerId = requestAnimationFrame(loop);
   }
 
   function hideOverlay(){
@@ -235,10 +241,11 @@
     overlay.setAttribute('aria-hidden','true');
   }
 
-  // ====== Sparkles inside the ball ======
-  function seedSparkles(n=30){
+  // ====== Sparkles ======
+  function seedSparkles(n=18){ // fewer sparkles for perf
     const rect = ball.getBoundingClientRect();
-    const r = rect.width/2; // circle
+    const r = rect.width/2;
+    const frag = document.createDocumentFragment();
     for (let i=0;i<n;i++){
       const s = document.createElement('span');
       s.className = 'sparkle';
@@ -250,48 +257,55 @@
       s.style.top  = `calc(${(y/r*50)}% - 3px)`;
       s.style.setProperty('--dur', (2 + Math.random()*3).toFixed(2) + 's');
       s.style.setProperty('--delay', (Math.random()*3).toFixed(2) + 's');
-      ball.appendChild(s);
+      frag.appendChild(s);
     }
+    ball.appendChild(frag);
   }
 
-  // ====== Intense thinking helper ======
-  function thinkFor(ms=2000, then){
+  // ====== Think animation guard ======
+  function thinkFor(ms=1400, then){
+    if (isThinking) return;
+    isThinking = true;
     ball.classList.add('think');
-    setTimeout(()=>{ ball.classList.remove('think'); then && then(); }, ms);
+    setTimeout(()=>{
+      ball.classList.remove('think');
+      isThinking = false;
+      then && then();
+    }, ms);
   }
 
   // ====== Interactions ======
   function requestTask(){
-    if (timerId) return; // ignore while running
-    // 2s intense thinking before revealing the task
-    thinkFor(2000, () => {
+    if (timerRunning || isThinking) return;
+    thinkFor(1400, () => {
       currentTask = pickTask();
       showTask(currentTask);
     });
   }
 
   ball.addEventListener('click', requestTask);
-  ball.addEventListener('keydown', (e)=>{ if (e.key==='Enter' || e.key===' ') { e.preventDefault(); requestTask(); } });
+  ball.addEventListener('keydown', (e)=>{
+    if (e.key==='Enter' || e.key===' '){ e.preventDefault(); requestTask(); }
+  });
 
   beginBtn.addEventListener('click', ()=>{
-    if (!currentTask) return;
-    // 2s thinking before showing the timer
-    thinkFor(2000, () => { showTimer(); startCountdown(currentTask.seconds); });
+    if (!currentTask || isThinking) return;
+    thinkFor(1400, () => { showTimer(); startCountdown(currentTask.seconds); });
   });
 
   skipBtn.addEventListener('click', ()=>{
-    if (timerId || skipLeft <= 0) return;
+    if (timerRunning || skipLeft <= 0 || isThinking) return;
     skipLeft--; updateSkipLabel();
-    // quick 1s think between skips for feedback
     thinkFor(1000, () => { currentTask = pickTask(); showTask(currentTask); });
   });
 
-  closeBtn.addEventListener('click', ()=>{ if (!timerId) hideOverlay(); });
-  overlay.addEventListener('click', (e)=>{ if (e.target === overlay && !timerId) hideOverlay(); });
+  closeBtn.addEventListener('click', ()=>{ if (!timerRunning) hideOverlay(); });
+  overlay.addEventListener('click', (e)=>{ if (e.target === overlay && !timerRunning) hideOverlay(); });
 
   // Init
-  seedSparkles(36);
+  seedSparkles(18);
 })();
 </script>
+
 </body>
 </html>
