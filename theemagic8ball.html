@@ -2,31 +2,41 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Crystal Task Ball (Mobile‑friendly)</title>
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1, viewport-fit=cover"
+/>
+<title>Crystal Task Ball (Mobile-friendly)</title>
 <style>
   :root{
     --bg:#000; --purple:#6b3ea8; --pink:#ff66cc; --accent:#b38cff;
     --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom);
   }
-  /* Use dynamic viewport units to avoid mobile URL bar issues */
-  html,body{height:100dvh;}
+
+  /* Fill the screen reliably on iOS/Safari */
+  html, body {
+    height: 100dvh;               /* modern */
+    height: 100svh;               /* iOS 16+ fallback */
+    height: -webkit-fill-available; /* older iOS fallback */
+  }
+  html, body { overflow: hidden; }
   body{
     margin:0; display:grid; place-items:center; background:var(--bg); color:#eee;
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-    overflow:hidden; padding-top:var(--safe-top); padding-bottom:var(--safe-bottom);
+    padding-top:var(--safe-top); padding-bottom:var(--safe-bottom);
+    -webkit-tap-highlight-color: transparent;
+    user-select:none;
   }
 
-  /* --- Crystal ball scene (kept simple for mobile) --- */
+  /* --- Crystal ball scene --- */
   .scene{ position:relative; width:min(92vw,460px); aspect-ratio:1/1; }
 
   .ball{
     position:absolute; inset:0; margin:auto; border-radius:50%;
-    /* Simple gradient + light shadow only; no heavy filters/animations */
     background: radial-gradient(circle at 50% 45%, rgba(120,80,200,.65), rgba(25,15,45,.98) 70%);
     box-shadow: 0 0 18px rgba(179,140,255,.28);
-    cursor:pointer; outline:none; user-select:none;
-    touch-action: manipulation; /* better mobile tap */
+    cursor:pointer; outline:none;
+    touch-action: manipulation;
   }
   .ball:active{ transform: scale(.995); }
 
@@ -34,17 +44,22 @@
     position:absolute; inset:0; display:grid; place-items:center; border-radius:50%;
     font-weight:800; letter-spacing:.06em; text-transform:uppercase;
     color:#e9ddff; text-shadow:0 0 8px rgba(180,140,255,.25);
-    pointer-events:none; /* clicks pass through to ball */
+    pointer-events:none;
   }
 
   /* --- Overlay/modal --- */
-  .overlay{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); }
+  .overlay{
+    position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6);
+    overscroll-behavior: none; /* stop rubber-band */
+  }
   .overlay.show{ display:grid; }
 
-  .modal{ 
-    width:min(92vw,520px); max-height: calc(100dvh - (var(--safe-top) + var(--safe-bottom) + 32px));
-    border-radius:14px; padding:18px; 
-    background: #140a1e; border:1px solid rgba(180,140,255,.25);
+  .modal{
+    width:min(92vw,520px);
+    max-height: calc(100svh - (var(--safe-top) + var(--safe-bottom) + 32px));
+    max-height: calc(100dvh - (var(--safe-top) + var(--safe-bottom) + 32px));
+    border-radius:14px; padding:18px;
+    background:#140a1e; border:1px solid rgba(180,140,255,.25);
     box-shadow: 0 10px 24px rgba(0,0,0,.6);
     text-align:center; overflow:auto; -webkit-overflow-scrolling: touch;
   }
@@ -74,7 +89,12 @@
 
   /* Respect reduced motion */
   @media (prefers-reduced-motion: reduce){
-    *, *::before, *::after{ animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    *, *::before, *::after{
+      animation-duration:.01ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:.01ms !important;
+      scroll-behavior:auto !important;
+    }
   }
 </style>
 </head>
@@ -104,13 +124,14 @@
 
   <div class="brand">Crystal Task Ball</div>
 
-  <audio id="chime" src="/chime.mp3" preload="auto"></audio>
+  <!-- TIP: if /chime.mp3 404s on iPhone, put it next to this file and use "chime.mp3" -->
+  <audio id="chime" src="chime.mp3" preload="auto"></audio>
 
 <script>
 (() => {
   // ====== CONFIG: tasks with fixed durations ======
   const TASKS = [
-    { label: "Massage, upper body only. Him on Her", seconds: 60 }
+    { label: "Massage, upper body only. Him on Her", seconds: 60 }, // <-- missing comma fixed
     { label: "Kiss neck and immediate area Him on Her", seconds: 30 },
     { label: "Kiss neck and immediate area Her on Him", seconds: 30 },
     { label: "Blowjob", seconds: 60 },
@@ -155,6 +176,7 @@
   let remaining = 0;
   let skipLeft = 2;
   let timerRunning = false;
+  let audioUnlocked = false;
 
   // ====== Helpers ======
   const pad = (n) => String(n).padStart(2, '0');
@@ -199,11 +221,10 @@
   function stopChime(){ try{ chime.pause(); chime.currentTime = 0; } catch(e){} }
 
   async function playChimeOnce(){
-    try { stopChime(); await chime.play(); } catch(e){ /* ignore autoplay block */ }
+    try { stopChime(); await chime.play(); } catch(e){ /* Safari may block if not unlocked */ }
   }
 
   function flashPurplePink(cb){
-    // Show layer, run 2s animation, then hide and callback
     flashLayer.classList.add('show');
     const done = () => {
       flashLayer.classList.remove('show');
@@ -221,7 +242,7 @@
 
     timerId = setInterval(() => {
       const now = Date.now();
-      const dt = Math.min(200, now - last); // clamp step (ms)
+      const dt = Math.min(200, now - last);
       last = now;
       remaining -= dt/1000;
 
@@ -229,13 +250,12 @@
         timeText.textContent = '00:00';
         clearTimer();
         playChimeOnce();
-        // Flash purple/pink for 2s, then go home
         flashPurplePink(goHome);
         return;
       }
 
       timeText.textContent = fmt(remaining);
-    }, 125); // light update cadence for mobile
+    }, 125);
   }
 
   function hideOverlay(){
@@ -245,14 +265,28 @@
   }
 
   function goHome(){
-    // reset to Touch Me state, ensure timers/audio are stopped
     clearTimer();
     stopChime();
     currentTask = null;
     hideOverlay();
   }
 
-  // ====== Interactions (kept minimal) ======
+  // --- iOS/Safari: unlock audio on first user gesture ---
+  function unlockAudioOnce(){
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    // Try play->pause to satisfy the gesture requirement
+    chime.play().then(() => { chime.pause(); chime.currentTime = 0; }).catch(()=>{});
+    // Some iOS versions want an AudioContext resume, too
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) { const ctx = new AC(); ctx.resume().catch(()=>{}); }
+    } catch(_){}
+  }
+  window.addEventListener('touchend', unlockAudioOnce, { once:true, passive:true });
+  window.addEventListener('click', unlockAudioOnce, { once:true });
+
+  // ====== Interactions ======
   function requestTask(){
     if (timerRunning) return;
     currentTask = pickTask();
@@ -277,8 +311,10 @@
     showTask(currentTask);
   });
 
-  // Give Up always returns to home instantly (no flash)
+  // Give Up returns to home instantly (no flash)
   giveUpBtn.addEventListener('click', goHome);
+
+  // Click outside modal to close (only when timer not running)
   overlay.addEventListener('click', (e)=>{ if (e.target === overlay && !timerRunning) goHome(); });
 })();
 </script>
