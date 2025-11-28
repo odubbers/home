@@ -251,109 +251,160 @@
   </div>
 
   <script>
-    // ----- CONFIG -----
-    const PX_PER_INCH = 30; // visual scale. Increase for more resolution.
+  // ----- CONFIG -----
+  const PX_PER_INCH = 30; // visual scale. Increase for more resolution.
+  const STORAGE_KEY = "signDesignerState_v1";
 
-    const SIGN_SIZES = {
-      "12x6": { widthIn: 12, heightIn: 6, label: '12" × 6"' },
-      "18x9": { widthIn: 18, heightIn: 9, label: '18" × 9"' },
-      "24x12": { widthIn: 24, heightIn: 12, label: '24" × 12"' },
-      "36x18": { widthIn: 36, heightIn: 18, label: '36" × 18"' }
-    };
+  const SIGN_SIZES = {
+    "12x6": { widthIn: 12, heightIn: 6, label: '12" × 6"' },
+    "18x9": { widthIn: 18, heightIn: 9, label: '18" × 9"' },
+    "24x12": { widthIn: 24, heightIn: 12, label: '24" × 12"' },
+    "36x18": { widthIn: 36, heightIn: 18, label: '36" × 18"' }
+  };
 
-    // ----- FABRIC SETUP -----
-    const canvasElement = document.getElementById("design-canvas");
-    const canvas = new fabric.Canvas(canvasElement, {
-      preserveObjectStacking: true,
-      selection: true
-    });
+  // ----- FABRIC SETUP -----
+  const canvasElement = document.getElementById("design-canvas");
+  const canvas = new fabric.Canvas(canvasElement, {
+    preserveObjectStacking: true,
+    selection: true
+  });
 
-    const signSizeSelect = document.getElementById("sign-size");
-    const canvasLabel = document.getElementById("canvas-label");
-    const addTextBtn = document.getElementById("add-text-btn");
-    const textInput = document.getElementById("text-input");
-    const resetBtn = document.getElementById("reset-canvas");
-    const downloadBtn = document.getElementById("download-png");
+  const signSizeSelect = document.getElementById("sign-size");
+  const canvasLabel = document.getElementById("canvas-label");
+  const addTextBtn = document.getElementById("add-text-btn");
+  const textInput = document.getElementById("text-input");
+  const resetBtn = document.getElementById("reset-canvas");
+  const downloadBtn = document.getElementById("download-png");
 
-    let currentSizeKey = "24x12";
+  let currentSizeKey = "24x12";
 
-    function setSignSize(sizeKey) {
-      const size = SIGN_SIZES[sizeKey];
-      if (!size) return;
+  // ----- SIZE / CANVAS -----
+  function setSignSize(sizeKey) {
+    const size = SIGN_SIZES[sizeKey];
+    if (!size) return;
 
-      currentSizeKey = sizeKey;
-      const pxWidth = size.widthIn * PX_PER_INCH;
-      const pxHeight = size.heightIn * PX_PER_INCH;
+    currentSizeKey = sizeKey;
+    const pxWidth = size.widthIn * PX_PER_INCH;
+    const pxHeight = size.heightIn * PX_PER_INCH;
 
-      canvas.setWidth(pxWidth);
-      canvas.setHeight(pxHeight);
-      canvas.renderAll();
+    canvas.setWidth(pxWidth);
+    canvas.setHeight(pxHeight);
+    canvas.renderAll();
 
-      canvasLabel.textContent = `${size.label} • ${pxWidth} × ${pxHeight} px (preview scale)`;
+    canvasLabel.textContent = `${size.label} • ${pxWidth} × ${pxHeight} px (preview scale)`;
+  }
+
+  function resetCanvas() {
+    canvas.clear();
+    canvas.setBackgroundColor("#ffffff", () => canvas.renderAll());
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  // ----- LOCAL STORAGE (SAVE / LOAD) -----
+  function saveState() {
+    try {
+      const json = canvas.toJSON();
+      const data = {
+        canvas: json,
+        sizeKey: currentSizeKey
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.warn("Could not save state:", e);
     }
+  }
 
-    // ----- TEXT HANDLING -----
-    function addText() {
-      const value = textInput.value.trim() || "Your text here";
-      const size = SIGN_SIZES[currentSizeKey];
+  function loadStateOrInit() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        const data = JSON.parse(raw);
+        const sizeKey = data.sizeKey || currentSizeKey;
+        setSignSize(sizeKey);
 
-      const text = new fabric.IText(value, {
-        left: (canvas.getWidth() || 0) / 2,
-        top: (canvas.getHeight() || 0) / 2,
-        originX: "center",
-        originY: "center",
-        fontSize: Math.max(20, size.heightIn * 4),
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui",
-        fill: "#111111"
-      });
-
-      canvas.add(text);
-      canvas.setActiveObject(text);
-      canvas.renderAll();
-    }
-
-    // ----- RESET -----
-    function resetCanvas() {
-      canvas.clear();
-      canvas.setBackgroundColor("#ffffff", () => canvas.renderAll());
-    }
-
-    // ----- DOWNLOAD PNG -----
-    function downloadPNG() {
-      if (!canvas.getObjects().length) {
-        alert("Add some text or graphics before downloading a preview.");
+        canvas.loadFromJSON(data.canvas, () => {
+          canvas.renderAll();
+        });
+        currentSizeKey = sizeKey;
+        signSizeSelect.value = sizeKey;
         return;
+      } catch (e) {
+        console.warn("Could not load saved state, starting fresh:", e);
       }
-
-      const dataUrl = canvas.toDataURL({
-        format: "png",
-        quality: 1
-      });
-
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = `sign-preview-${currentSizeKey}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
     }
 
-    // ----- EVENT BINDINGS -----
-    signSizeSelect.addEventListener("change", (e) => {
-      setSignSize(e.target.value);
-      canvas.renderAll();
-    });
-
-    addTextBtn.addEventListener("click", addText);
-    resetBtn.addEventListener("click", () => {
-      resetCanvas();
-    });
-    downloadBtn.addEventListener("click", downloadPNG);
-
-    // ----- INITIALIZE -----
+    // No saved state, start with a clean canvas
     resetCanvas();
     setSignSize(currentSizeKey);
+  }
+
+  // ----- TEXT HANDLING -----
+  function addText() {
+    const value = textInput.value.trim() || "Your text here";
+    const size = SIGN_SIZES[currentSizeKey];
+
+    const text = new fabric.IText(value, {
+      left: (canvas.getWidth() || 0) / 2,
+      top: (canvas.getHeight() || 0) / 2,
+      originX: "center",
+      originY: "center",
+      fontSize: Math.max(20, size.heightIn * 4),
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui",
+      fill: "#111111"
+    });
+
+    canvas.add(text);
+    canvas.setActiveObject(text);
+    canvas.renderAll();
+    saveState();
+  }
+
+  // ----- DOWNLOAD PNG -----
+  function downloadPNG() {
+    if (!canvas.getObjects().length) {
+      alert("Add some text or graphics before downloading a preview.");
+      return;
+    }
+
+    const dataUrl = canvas.toDataURL({
+      format: "png",
+      quality: 1
+    });
+
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = `sign-preview-${currentSizeKey}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // ----- EVENT BINDINGS -----
+  signSizeSelect.addEventListener("change", (e) => {
+    setSignSize(e.target.value);
+    saveState();
+  });
+
+  addTextBtn.addEventListener("click", addText);
+
+  resetBtn.addEventListener("click", () => {
+    if (confirm("Clear the sign and start over?")) {
+      resetCanvas();
+      setSignSize(currentSizeKey);
+    }
+  });
+
+  downloadBtn.addEventListener("click", downloadPNG);
+
+  // Autosave when user edits objects on the canvas
+  canvas.on("object:modified", saveState);
+  canvas.on("object:added", saveState);
+  canvas.on("object:removed", saveState);
+
+  // ----- INITIALIZE -----
+  loadStateOrInit();
   </script>
+
 </body>
 </html>
 
