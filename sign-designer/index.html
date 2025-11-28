@@ -280,19 +280,29 @@
 
   // ----- SIZE / CANVAS -----
   function setSignSize(sizeKey) {
-    const size = SIGN_SIZES[sizeKey];
-    if (!size) return;
+  const size = SIGN_SIZES[sizeKey];
+  if (!size) return;
 
-    currentSizeKey = sizeKey;
-    const pxWidth = size.widthIn * PX_PER_INCH;
-    const pxHeight = size.heightIn * PX_PER_INCH;
+  currentSizeKey = sizeKey;
+  const pxWidth = size.widthIn * PX_PER_INCH;
+  const pxHeight = size.heightIn * PX_PER_INCH;
 
-    canvas.setWidth(pxWidth);
-    canvas.setHeight(pxHeight);
-    canvas.renderAll();
+  // Set Fabric's internal canvas size
+  canvas.setWidth(pxWidth);
+  canvas.setHeight(pxHeight);
 
-    canvasLabel.textContent = `${size.label} • ${pxWidth} × ${pxHeight} px (preview scale)`;
-  }
+  // Make sure the DOM element matches exactly
+  canvasElement.width = pxWidth;
+  canvasElement.height = pxHeight;
+  canvasElement.style.width = pxWidth + "px";
+  canvasElement.style.height = pxHeight + "px";
+
+  canvas.calcOffset();
+  canvas.requestRenderAll();
+
+  canvasLabel.textContent = `${size.label} • ${pxWidth} × ${pxHeight} px (preview scale)`;
+}
+
 
   function resetCanvas() {
     canvas.clear();
@@ -340,24 +350,29 @@
 
   // ----- TEXT HANDLING -----
   function addText() {
-    const value = textInput.value.trim() || "Your text here";
-    const size = SIGN_SIZES[currentSizeKey];
+  const value = textInput.value.trim() || "Your text here";
+  const size = SIGN_SIZES[currentSizeKey];
 
-    const text = new fabric.IText(value, {
-      left: (canvas.getWidth() || 0) / 2,
-      top: (canvas.getHeight() || 0) / 2,
-      originX: "center",
-      originY: "center",
-      fontSize: Math.max(20, size.heightIn * 4),
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui",
-      fill: "#111111"
-    });
+  const text = new fabric.IText(value, {
+    fontSize: Math.max(20, size.heightIn * 4),
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui",
+    fill: "#111111",
+    originX: "center",
+    originY: "center"
+  });
 
-    canvas.add(text);
-    canvas.setActiveObject(text);
-    canvas.renderAll();
-    saveState();
-  }
+  canvas.add(text);
+
+  // Center the text using Fabric's helper (uses current canvas size)
+  canvas.centerObject(text);
+  text.setCoords();
+
+  canvas.setActiveObject(text);
+  canvas.requestRenderAll();
+
+  saveState?.(); // if saveState exists in your script; otherwise remove this line
+}
+
 
   // ----- DOWNLOAD PNG -----
   function downloadPNG() {
