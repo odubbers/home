@@ -4,422 +4,2448 @@
   <meta charset="utf-8" />
   <title>Sign Layout Preview</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- Simple, Apple-like system font stack -->
   <style>
-    * {
-      box-sizing: border-box;
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, -system-ui, "Segoe UI", sans-serif; background:#f5f5f7; color:#111; }
+    .app { min-height:100vh; display:flex; flex-direction:column; }
+    .top-bar { padding:16px 24px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(0,0,0,0.06); background:rgba(255,255,255,0.9); }
+  .top-bar { padding:16px 24px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(0,0,0,0.06); background:rgba(255,255,255,0.9); position:relative; }
+    .top-bar-controls { display:flex; gap:12px; align-items:center; }
+    label { font-size:13px; color:#555; }
+    select, button, input[type="text"], input[type="email"], input[type="tel"], textarea { border-radius:999px; border:1px solid rgba(0,0,0,0.12); padding:6px 12px; font-size:13px; background:#fff; }
+    .content { display:flex; gap:24px; padding:24px; flex:1; }
+    .sidebar { width:260px; background:#fff; border-radius:12px; padding:16px; box-shadow:0 12px 30px rgba(0,0,0,0.04); }
+  .canvas-wrapper { flex:1; display:flex; align-items:center; justify-content:center; }
+  /* Simplified artboard: clean, centered, fixed preview area */
+  .artboard { background:#e5e5ea; padding:12px; border-radius:0; display:inline-block; }
+  .artboard { position:relative; }
+
+  /* Only style the drawing canvas, not Fabric's overlay */
+  #design-canvas {
+    background:#fff;
+    border-radius:0;
+    display:block;
+    box-shadow:0 6px 18px rgba(0,0,0,0.06);
+  }
+
+  /* (Optional safety) keep the upper overlay transparent */
+  .canvas-container canvas.upper-canvas {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .canvas-label { text-align:center; font-size:12px; color:#666; margin-top:10px; }
+    .version-row { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+    .thumb { width:56px; height:56px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.06); cursor:pointer; display:flex; align-items:center; justify-content:center; background:#fff; }
+    /* Default styling for remove button when inactive */
+    #remove-selected-btn { background: #fff; color: #000; }
+    /* Highlight state for the Add Image button when an image is selected */
+    #add-image-btn.highlight { box-shadow: 0 6px 18px rgba(0,122,255,0.18); border: 1px solid rgba(0,122,255,0.9); background: linear-gradient(#007AFF, #005FCC); color: #fff; }
+    /* Highlight state for the Add Text button when the text input is focused - use solid blue like Add Image */
+    #add-text-btn.highlight { box-shadow: 0 6px 18px rgba(0,122,255,0.18); border: 1px solid rgba(0,122,255,0.9); background: linear-gradient(#007AFF, #005FCC); color: #fff; }
+    /* Highlight state for the ARC button when Add Text is active (subtle border) */
+    #add-arc-text-btn.highlight { box-shadow: 0 4px 12px rgba(0,122,255,0.08); border: 1px solid rgba(0,122,255,0.9); color: #004a99; }
+
+    /* Make the text input show a blue outline when focused (matching image thumb outline) */
+    #text-input:focus {
+      outline: 3px solid rgba(0,122,255,0.8);
+      outline-offset: 2px;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(0,122,255,0.04);
     }
-
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
-        system-ui, -system-ui, "Segoe UI", sans-serif;
-      background: #f5f5f7;
-      color: #111111;
+    /* Highlight state for the Remove Selected button when a selection exists (red) */
+    #remove-selected-btn.highlight-red { box-shadow: 0 6px 18px rgba(220,40,40,0.18); border: 1px solid rgba(220,40,40,0.9); background: linear-gradient(#E53935, #C62828); color: #fff; }
+    /* Highlight state for Hori Cent (blue) */
+    #hori-cent-btn.highlight-red { box-shadow: 0 6px 18px rgba(0,122,255,0.18); border: 1px solid rgba(0,122,255,0.9); background: linear-gradient(#007AFF, #005FCC); color: #fff; }
+    /* Highlight state for Vert Center (blue) */
+    #vert-cent-btn.highlight-red { box-shadow: 0 6px 18px rgba(0,122,255,0.18); border: 1px solid rgba(0,122,255,0.9); background: linear-gradient(#007AFF, #005FCC); color: #fff; }
+    /* Highlight state for the Submit Design button when no selection exists */
+    #to-form-btn.highlight { box-shadow: 0 6px 18px rgba(0,122,255,0.18); border: 1px solid rgba(0,122,255,0.9); background: linear-gradient(#007AFF, #005FCC); color: #fff; }
+    .top-bar-title { display:flex; align-items:center; }
+    .topbar-branding-placeholder {
+      width:160px;
+      height:36px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:8px;
+      border:1px dashed rgba(0,0,0,0.08);
+      background:#ffffff;
+      color:#333;
+      font-size:14px;
+      font-weight:600;
+      box-shadow:0 4px 10px rgba(0,0,0,0.03);
     }
-
-    .app {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+    .top-bar-center { position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:12px; align-items:center; }
+    .top-bar-actions { display:flex; gap:12px; align-items:center; }
+    .sidebar-header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+    .nav-btn { border-radius:8px; padding:6px 8px; background:#fff; border:1px solid rgba(0,0,0,0.08); cursor:pointer; font-weight:600; }
+    .panel-hidden { display:none; }
+    .panel-title { font-size:14px; text-transform:uppercase; color:#333; font-weight:700; margin-bottom:6px; }
+    /* Size gallery thumbnails (fly-out) */
+    .size-select-wrapper { position: relative; }
+    .size-select-wrapper select { width:100%; }
+    .size-toggle { position:absolute; left:0; top:0; right:0; bottom:0; background:transparent; border:none; cursor:pointer; z-index:30; }
+    .size-gallery { position: absolute; left: 0; top: calc(100% + 8px); display:flex; gap:12px; padding:8px; z-index:20; background: transparent; max-height:0; opacity:0; transform: translateY(-8px); overflow:visible; transition: all 220ms ease; }
+    .size-gallery.expanded { max-height:360px; opacity:1; transform: translateY(0); }
+    .size-thumb { width:200px; min-width:200px; height:200px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.06); cursor:pointer; display:flex; align-items:center; justify-content:center; background:#fff; font-size:14px; color:#333; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+    .size-thumb { position: relative; }
+    .size-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .size-thumb.selected { outline:3px solid rgba(0,122,255,0.85); }
+    /* Wood gallery mirrors size gallery behavior */
+    .wood-gallery { position: absolute; left: 0; top: calc(100% + 8px); display:flex; gap:12px; padding:8px; z-index:20; background: transparent; max-height:0; opacity:0; transform: translateY(-8px); overflow:visible; transition: all 220ms ease; }
+    .wood-gallery.expanded { max-height:360px; opacity:1; transform: translateY(0); }
+    .wood-thumb { width:200px; min-width:200px; height:200px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.06); cursor:pointer; display:flex; align-items:center; justify-content:center; background:#fff; font-size:14px; color:#333; box-shadow:0 6px 18px rgba(0,0,0,0.06); position:relative; }
+    .wood-thumb.selected { outline:3px solid rgba(0,122,255,0.85); }
+    /* When the gallery is collapsed, prevent thumbnails from receiving clicks */
+    .wood-gallery:not(.expanded) .wood-thumb,
+    .size-gallery:not(.expanded) .size-thumb {
+      pointer-events: none;
+      opacity: 0.8;
     }
-
-    .top-bar {
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(10px);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    .top-bar-title {
-      font-size: 18px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-    }
-
-    .top-bar-controls {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      font-size: 14px;
-    }
-
-    label {
-      font-size: 13px;
-      color: #555;
-    }
-
-    select,
-    button {
-      border-radius: 999px;
-      border: 1px solid rgba(0, 0, 0, 0.12);
-      padding: 6px 14px;
-      font-size: 13px;
-      background: #ffffff;
-      cursor: pointer;
-      outline: none;
-      transition: background 0.15s ease, box-shadow 0.15s ease,
-        transform 0.05s ease;
-    }
-
-    select:focus,
-    button:focus {
-      box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
-      border-color: rgba(0, 122, 255, 0.6);
-    }
-
-    button.primary {
-      background: #007aff;
-      border-color: #007aff;
-      color: #ffffff;
-    }
-
-    button.primary:hover {
-      background: #0063cc;
-    }
-
-    button:hover:not(:disabled) {
-      background: rgba(0, 0, 0, 0.02);
-    }
-
-    button:active:not(:disabled) {
-      transform: translateY(1px);
-    }
-
-    button:disabled {
-      opacity: 0.4;
-      cursor: default;
-    }
-
-    .content {
-      display: flex;
-      flex: 1;
-      padding: 24px;
-      gap: 24px;
-    }
-
-    .sidebar {
-      width: 260px;
-      max-width: 100%;
-      background: #ffffff;
-      border-radius: 18px;
-      padding: 16px 18px;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.04);
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-
-    .sidebar-section-title {
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #999;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-top: 8px;
-    }
-
-    .field input[type="text"] {
-      border-radius: 999px;
-      border: 1px solid rgba(0, 0, 0, 0.12);
-      padding: 6px 12px;
-      font-size: 13px;
-      outline: none;
-    }
-
-    .field input[type="text"]:focus {
-      box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
-      border-color: rgba(0, 122, 255, 0.6);
-    }
-
-    .canvas-wrapper {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .canvas-frame {
-      background: #e5e5ea;
-      padding: 24px;
-      border-radius: 24px;
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.08);
-      display: inline-block;
-    }
-
-    .canvas-label {
-      text-align: center;
-      font-size: 12px;
-      color: #666;
-      margin-top: 10px;
-    }
-
-    canvas {
-      background: #ffffff;
-      border-radius: 12px;
-      display: block;
-    }
-
-    @media (max-width: 900px) {
-      .content {
-        flex-direction: column;
-      }
-
-      .sidebar {
-        width: 100%;
-      }
-
-      .canvas-frame {
-        width: 100%;
-      }
-
-      canvas {
-        width: 100% !important;
-        height: auto !important;
-      }
-    }
+    .wood-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .wood-thumb-label { position:absolute; left:8px; right:8px; bottom:8px; background:rgba(0,0,0,0.45); color:#fff; padding:6px 8px; border-radius:6px; font-weight:700; font-size:13px; text-align:center; pointer-events:none; }
   </style>
-
-  <!-- Fabric.js CDN (you can update to latest stable if needed) -->
+  <style>
+    /* Make options inside the TEXT COLOR dropdown bold so the color samples stand out */
+    /* Apply bold to the select and its options with higher specificity
+       Some native controls ignore option styling; this increases chance
+       of being applied in user agents that respect it. */
+    #color-select, #color-select option { font-weight:700 !important; }
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
 </head>
 <body>
+  <style>
+    /* Size info formatting (wood bold/large, size + price, px data) */
+    #size-info { display:flex; flex-direction:column; align-items:flex-start; text-align:left; color:#666; }
+    #size-info .size-info-wood { font-weight:800; font-size:16px; color:#222; letter-spacing:0.4px; }
+    #size-info .size-info-main { display:flex; gap:12px; align-items:baseline; margin-top:4px; }
+    #size-info .size-info-size { font-weight:800; font-size:14px; color:#444; }
+    #size-info .size-info-price { font-weight:700; font-size:13px; color:#555; }
+    #size-info .size-info-px { margin-top:4px; font-size:11px; color:#999; }
+  </style>
   <div class="app">
     <header class="top-bar">
-      <div class="top-bar-title">Sign Layout Preview</div>
-      <div class="top-bar-controls">
-        <label for="sign-size">Sign size:</label>
-        <select id="sign-size">
-          <option value="12x6">12" × 6"</option>
-          <option value="18x9">18" × 9"</option>
-          <option value="24x12" selected>24" × 12"</option>
-          <option value="36x18">36" × 18"</option>
-        </select>
-
-        <button id="reset-canvas">Reset</button>
-        <button id="download-png" class="primary">Download Preview</button>
+      <div class="top-bar-title">
+        <!-- Top-left branding placeholder. Replace with an <img id="branding-image"> when available -->
+        <div id="topbar-branding" class="topbar-branding-placeholder">Branding</div>
       </div>
+      <div class="top-bar-center">
+        <!-- Top bar center intentionally left minimal; controls moved to sidebar -->
+      </div>
+      <div class="top-bar-actions"></div>
     </header>
 
     <main class="content">
       <aside class="sidebar">
-        <div>
-          <div class="sidebar-section-title">Text</div>
-          <div class="field">
-            <label for="text-input">New text</label>
-            <input
-              id="text-input"
-              type="text"
-              placeholder="eg. THE WILSON CABIN"
-            />
+        <!-- Design panel (default) -->
+        <div id="design-panel">
+          <div class="sidebar-header">
+            <div style="font-size:13px; text-transform:uppercase; color:#999; font-weight:700;">Design</div>
+            <button id="to-form-btn" class="nav-btn">SUBMIT DESIGN →</button>
           </div>
-          <button id="add-text-btn" style="margin-top: 8px;">Add Text</button>
+
+          <div style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <div class="panel-title">Sign Size</div>
+                <div id="size-select-wrapper" class="size-select-wrapper">
+                <select id="sign-size" aria-label="Sign size">
+                  <option disabled selected value="">Select Sign Size</option>
+                  <option value="12x6">12" × 6"</option>
+                  <option value="18x9">18" × 9"</option>
+                  <option value="24x12">24" × 12"</option>
+                  <option value="36x18">36" × 18"</option>
+                </select>
+                <!-- An overlay toggle intercepts clicks on the native select so the browser dropdown won't open -->
+                <button id="size-toggle" class="size-toggle" aria-haspopup="true" aria-expanded="false" aria-label="Show size previews"></button>
+                <!-- Size thumbnails (fly-out): click a thumb to choose that size (placeholder visuals) -->
+                <div id="size-gallery" class="size-gallery" aria-hidden="true">
+                  <div class="size-thumb" data-size="12x6">12" × 6"</div>
+                  <div class="size-thumb" data-size="18x9">18" × 9"</div>
+                  <div class="size-thumb" data-size="24x12">
+                    <img src="images/size_24.jpg" alt="24&quot; × 12&quot;" />
+                    <div class="wood-thumb-label">24" × 12"</div>
+                  </div>
+                  <div class="size-thumb" data-size="36x18">36" × 18"</div>
+                </div>
+                </div>
+
+                <div class="panel-title" style="margin-top:6px;">Wood</div>
+                <div id="wood-select-wrapper" class="size-select-wrapper">
+                <select id="wood-type" aria-label="Wood type">
+                  <option disabled selected value="">Select Wood & Size</option>
+                  <option value="pine">Pine</option>
+                  <option value="cedar">Cedar</option>
+                  <option value="chestnut">Chestnut</option>
+                  <option value="poplar">Poplar</option>
+                  <option value="composite">Composite</option>
+                </select>
+                <button id="wood-toggle" class="size-toggle" aria-haspopup="true" aria-expanded="false" aria-label="Show wood previews"></button>
+                <div id="wood-gallery" class="wood-gallery" aria-hidden="true">
+                  <div class="wood-thumb" data-wood="pine" style="background:#EDE0B4;">Pine</div>
+                  <div class="wood-thumb" data-wood="cedar" style="background:#D2A679;">Cedar</div>
+                  <div class="wood-thumb" data-wood="chestnut">
+                    <img src="images/wood_chestnut.jpg" alt="Chestnut" />
+                    <div class="wood-thumb-label">Chestnut</div>
+                  </div>
+                  <div class="wood-thumb" data-wood="poplar" style="background:#EFD9B7;">Poplar</div>
+                  <div class="wood-thumb" data-wood="composite" style="background:#9EA3A7; color:#fff;">Composite</div>
+                </div>
+                </div>
+              </div>
+
+              <div style="height:2px; background:rgba(0,0,0,0.06); margin:8px 0;"></div>
+
+              <div class="panel-title">Text</div>
+              <label for="text-input" style="font-size:13px; color:#666; margin:0;">TEXT TO ADD</label>
+            <input id="text-input" type="text" placeholder="eg. THE WILSON CABIN" />
+            <label for="font-select" style="font-size:13px; color:#666; margin:0;">FONT</label>
+            <select id="font-select">
+              <option value="Arial, Helvetica, sans-serif" style="font-family: Arial, Helvetica, sans-serif;">Arial</option>
+              <option value="Georgia, serif" style="font-family: Georgia, serif;">Georgia</option>
+              <option value="'Courier New', Courier, monospace" style="font-family: 'Courier New', Courier, monospace;">Courier New</option>
+            </select>
+            <!-- color selector moved to artboard controls (Selected Text Color) -->
+            
+            <div style="display:flex; gap:2px; margin-top:6px;">
+              <button id="add-text-btn" type="button" style="flex:2; padding:10px 12px; font-weight:600; border-top-left-radius:12px; border-bottom-left-radius:12px; border-top-right-radius:2px; border-bottom-right-radius:2px;">ADD TEXT</button>
+              <button id="add-arc-text-btn" type="button" style="flex:1; padding:10px 12px; font-weight:600; border-top-left-radius:2px; border-bottom-left-radius:2px; border-top-right-radius:12px; border-bottom-right-radius:12px;">ARC</button>
+            </div>
+
+            <div style="height:2px; background:rgba(0,0,0,0.06); margin:8px 0;"></div>
+
+            <div class="panel-title">ARTWORK</div>
+            <div id="image-gallery" style="display:flex; gap:8px; margin-top:6px;">
+              <div class="thumb" data-src="images/divider_cup.png"><img src="images/divider_cup.png" alt="divider" style="max-width:100%; max-height:100%;"/></div>
+              <div class="thumb" data-src="images/object_frosty.png"><img src="images/object_frosty.png" alt="frosty" style="max-width:100%; max-height:100%;"/></div>
+              <div class="thumb" data-src="images/object_tree.png"><img src="images/object_tree.png" alt="tree" style="max-width:100%; max-height:100%;"/></div>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:6px; align-items:center;">
+              <input id="upload-image" type="file" accept="image/*" style="display:none;" />
+              <label for="upload-image" style="flex:initial; width:120px; text-align:center; padding:6px 10px; background:#fff; border:1px solid rgba(0,0,0,0.08); border-radius:8px; cursor:pointer; font-size:13px;">UPLOAD</label>
+            </div>
+            <div style="margin-top:8px;">
+              <button id="add-image-btn" type="button" style="width:100%; padding:12px; font-weight:700;">ADD IMAGE</button>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <div class="sidebar-section-title">Tips</div>
-          <p style="font-size: 13px; line-height: 1.4; color: #666; margin: 0;">
-            • Drag text to move it<br />
-            • Use corner handles to resize<br />
-            • Hold Shift while dragging a corner to keep proportions if needed
-          </p>
+        <!-- Form panel (hidden by default) -->
+        <div id="form-panel" class="panel-hidden">
+          <div class="sidebar-header">
+            <button id="to-design-btn" class="nav-btn" style="color:#999">← DESIGN</button>
+            <div style="font-size:13px; text-transform:uppercase; color:#007AFF; font-weight:700;">SUBMIT DESIGN</div>
+          </div>
+
+          <div style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+            <div style="font-size:13px; text-transform:uppercase; color:#999;">YOUR ORDER</div>
+            <label style="font-size:13px; color:#666; margin:0;">Name</label>
+            <input id="customer-name" name="name" type="text" placeholder="Full name" />
+            <label style="font-size:13px; color:#666; margin:0;">Email</label>
+            <input id="customer-email" name="email" type="email" placeholder="you@example.com" />
+            <label style="font-size:13px; color:#666; margin:0;">Phone</label>
+            <input id="customer-phone" name="phone" type="tel" placeholder="(555) 555-5555" />
+            <!-- Finishing: fly-out like Wood (INTERIOR / EXTERIOR) -->
+            <div id="finishing-select-wrapper" class="size-select-wrapper" style="margin-top:8px;">
+              <select id="finishing-select" aria-label="Finishing">
+                <option disabled selected value="">Finishing</option>
+                <option value="interior">Interior</option>
+                <option value="exterior">Exterior</option>
+              </select>
+              <button id="finishing-toggle" class="size-toggle" aria-haspopup="true" aria-expanded="false" aria-label="Show finishing previews"></button>
+              <div id="finishing-gallery" class="wood-gallery" aria-hidden="true">
+                <div class="finishing-thumb wood-thumb" data-option="finishing:interior" style="background:#F6E9D6;">Interior</div>
+                <div class="finishing-thumb wood-thumb" data-option="finishing:exterior" style="background:#E8F4FF;">Exterior</div>
+              </div>
+            </div>
+            <!-- Attachment: fly-out with HANGING / BACK ATTACH / NO ATTACH -->
+            <div id="attachment-select-wrapper" class="size-select-wrapper" style="margin-top:8px;">
+              <select id="attachment-select" aria-label="Attachment">
+                <option disabled selected value="">Attachment</option>
+                <option value="hanging">Hanging</option>
+                <option value="back_attach">Back Attach</option>
+                <option value="no_attach">No Attach</option>
+              </select>
+              <button id="attachment-toggle" class="size-toggle" aria-haspopup="true" aria-expanded="false" aria-label="Show attachment previews"></button>
+              <div id="attachment-gallery" class="wood-gallery" aria-hidden="true">
+                <div class="attachment-thumb wood-thumb" data-option="attachment:hanging" style="background:#FFF3E6;">Hanging</div>
+                <div class="attachment-thumb wood-thumb" data-option="attachment:back_attach" style="background:#F1F8E9;">Back Attach</div>
+                <div class="attachment-thumb wood-thumb" data-option="attachment:no_attach" style="background:#F3F3F5;">No Attach</div>
+              </div>
+            </div>
+            <label style="font-size:13px; color:#666; margin:0;">Comments</label>
+            <textarea id="customer-comments" name="comments" rows="3" placeholder="Provide any details for the sign" style="border-radius:8px; resize:vertical; width:100%; max-width:100%;"></textarea>
+            <input type="hidden" name="preview_image_url" id="preview-image-url" />
+            <input type="hidden" name="sign_size" id="form-sign-size" />
+            <input type="hidden" name="wood_type" id="form-wood-type" />
+            <input type="hidden" name="quoted_price" id="form-quoted-price" />
+            <input type="hidden" name="finishing_type" id="form-finishing" />
+            <input type="hidden" name="finishing_price" id="form-finishing-price" />
+            <input type="hidden" name="attachment_type" id="form-attachment" />
+            <input type="hidden" name="attachment_price" id="form-attachment-price" />
+            <button id="send-design-btn" type="button" style="margin-top:6px; padding:12px; font-weight:700;">PLACE ORDER</button>
+            <div id="send-status" style="font-size:13px; color:#666; margin-top:6px;">&nbsp;</div>
+            <div style="margin-top:8px;">
+              <button id="debug-toggle" type="button" style="padding:8px; font-size:12px;">Show Debug Info</button>
+              <div id="debug-panel" style="display:none; font-size:12px; color:#333; margin-top:8px; max-height:180px; overflow:auto; background:#f8f8f8; padding:8px; border-radius:6px;"></div>
+            </div>
+          </div>
         </div>
       </aside>
 
       <section class="canvas-wrapper">
-        <div>
-          <div class="canvas-frame">
-            <!-- Canvas dimensions are set via JS -->
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          <!-- version moved to bottom-right of the page -->
+
+            <div id="download-wrapper" style="display:flex; justify-content:flex-end; margin-bottom:8px; align-items:center; gap:12px;">
+            <div id="size-info" style="margin-right:auto;">&nbsp;</div>
+            <button id="share-design-btn" aria-label="Copy link" title="Copy link" style="background:#fff; border:1px solid rgba(0,0,0,0.08); padding:8px 12px; display:inline-flex; align-items:center; justify-content:center; gap:8px; margin-top:20px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M10.59 13.41a4 4 0 0 1 0-5.66l2.83-2.83a4 4 0 0 1 5.66 5.66l-1.41 1.41" />
+                <path d="M13.41 10.59a4 4 0 0 1 0 5.66l-2.83 2.83a4 4 0 0 1-5.66-5.66l1.41-1.41" />
+                <line x1="8.5" y1="15.5" x2="15.5" y2="8.5" />
+              </svg>
+            </button>
+            <button id="download-png" class="primary" style="margin-top:20px; padding:8px 12px;">Download Design</button>
+          </div>
+          <div class="artboard">
             <canvas id="design-canvas"></canvas>
           </div>
-          <div class="canvas-label" id="canvas-label"></div>
+
+          <div id="artboard-controls" style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+            <div style="flex:1; display:flex; align-items:center; gap:8px;">
+              <label for="color-select" style="font-size:12px; color:#666; margin:0; font-weight:600;">TEXT COLOR</label>
+              <select id="color-select" aria-label="Text color" style="border-radius:999px; padding:6px 12px; font-size:13px;">
+                <option value="#000000" style="color:#000000;">Black</option>
+                <option value="#FFFFFF" style="color:#000000;">White</option>
+                <option value="#333333" style="color:#333333;">Dark Gray</option>
+                <option value="#888888" style="color:#888888;">Light Gray</option>
+                <option value="#D32F2F" style="color:#D32F2F;">Red</option>
+                <option value="#1976D2" style="color:#1976D2;">Blue</option>
+                <option value="#2E7D32" style="color:#2E7D32;">Green</option>
+                <option value="#8B5A2B" style="color:#8B5A2B;">Brown</option>
+              </select>
+            </div>
+            <div style="flex:1; display:flex; justify-content:center; gap:8px; align-items:center;">
+              <button id="remove-selected-btn" aria-label="Remove selected" title="Remove selected" style="border:1px solid rgba(0,0,0,0.08); padding:8px 12px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                  <path d="M3 6h18" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                </svg>
+              </button>
+              <button id="hori-cent-btn" aria-label="Center horizontally" title="Center horizontally" style="border:1px solid rgba(0,0,0,0.08); padding:8px 12px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                  <line x1="12" y1="2" x2="12" y2="22" stroke-dasharray="2 2" />
+                  <rect x="6" y="8" width="12" height="8" rx="1" />
+                </svg>
+              </button>
+              <button id="vert-cent-btn" aria-label="Center vertically" title="Center vertically" style="border:1px solid rgba(0,0,0,0.08); padding:8px 12px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                  <line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="2 2" />
+                  <rect x="8" y="6" width="8" height="12" rx="1" />
+                </svg>
+              </button>
+            </div>
+            <div style="flex:1; display:flex; justify-content:flex-end; gap:8px; align-items:center;">
+              <button id="save-design-btn" style="background:#fff; border:1px solid rgba(0,0,0,0.08); padding:8px 12px;">Save</button>
+              <button id="reset-canvas" style="background:#fff; border:1px solid rgba(0,0,0,0.08); padding:8px 12px;">Reset</button>
+            </div>
+          </div>
+
+          <div id="saved-area" style="margin-top:60px; display:flex; flex-direction:column; align-items:flex-start; gap:8px; width:100%; overflow-x:hidden;">
+            <div id="saved-header" style="font-weight:700; font-size:13px; color:#333; margin-bottom:6px;">Saved Signs</div>
+            <div id="saved-list" style="display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap; align-content:flex-start; max-width:100%;"></div>
+          </div>
         </div>
       </section>
+
+      <!-- Version badge: bottom-right of the page -->
+      <div id="version-badge" style="position:fixed; right:16px; bottom:12px; display:flex; gap:8px; align-items:center; pointer-events:none;">
+        <label for="version-field" style="font-size:13px; color:#666; margin:0;">Version:</label>
+        <input id="version-field" type="text" readonly style="border:none; background:transparent; font-size:13px; color:#666; pointer-events:auto;" />
+      </div>
+      
     </main>
   </div>
 
   <script>
-  // ----- CONFIG -----
-  const PX_PER_INCH = 30; // visual scale. Increase for more resolution.
-  const STORAGE_KEY = "signDesignerState_v1";
+    // Cloudinary configuration
+    const CLOUDINARY_CLOUD_NAME = "dlm70zgiq";
+  // Use the Cloudinary unsigned upload preset configured for this account.
+  // NOTE: preset name provided by user: "sign_preview"
+  const CLOUDINARY_UPLOAD_PRESET = "sign_preview";
+  const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+  // If true, when Cloudinary upload fails we'll still POST the form to Formspree
+  // including the base64 data URL as `preview_data_url` so you can complete
+  // end-to-end testing while Cloudinary is being debugged. Set false to disable.
+  const USE_FORMSPREE_FALLBACK = true;
 
-  const SIGN_SIZES = {
-    "12x6": { widthIn: 12, heightIn: 6, label: '12" × 6"' },
-    "18x9": { widthIn: 18, heightIn: 9, label: '18" × 9"' },
-    "24x12": { widthIn: 24, heightIn: 12, label: '24" × 12"' },
-    "36x18": { widthIn: 36, heightIn: 18, label: '36" × 18"' }
-  };
-
-  // ----- FABRIC SETUP -----
-  const canvasElement = document.getElementById("design-canvas");
-  const canvas = new fabric.Canvas(canvasElement, {
-    preserveObjectStacking: true,
-    selection: true
-  });
-
-  const signSizeSelect = document.getElementById("sign-size");
-  const canvasLabel = document.getElementById("canvas-label");
-  const addTextBtn = document.getElementById("add-text-btn");
-  const textInput = document.getElementById("text-input");
-  const resetBtn = document.getElementById("reset-canvas");
-  const downloadBtn = document.getElementById("download-png");
-
-  let currentSizeKey = "24x12";
-
-  // ----- SIZE / CANVAS -----
-  function setSignSize(sizeKey) {
-  const size = SIGN_SIZES[sizeKey];
-  if (!size) return;
-
-  currentSizeKey = sizeKey;
-  const pxWidth = size.widthIn * PX_PER_INCH;
-  const pxHeight = size.heightIn * PX_PER_INCH;
-
-  // Set Fabric's internal canvas size
-  canvas.setWidth(pxWidth);
-  canvas.setHeight(pxHeight);
-
-  // Make sure the DOM element matches exactly
-  canvasElement.width = pxWidth;
-  canvasElement.height = pxHeight;
-  canvasElement.style.width = pxWidth + "px";
-  canvasElement.style.height = pxHeight + "px";
-
-  canvas.calcOffset();
-  canvas.requestRenderAll();
-
-  canvasLabel.textContent = `${size.label} • ${pxWidth} × ${pxHeight} px (preview scale)`;
-}
-
-
-  function resetCanvas() {
-    canvas.clear();
-    canvas.setBackgroundColor("#ffffff", () => canvas.renderAll());
-    localStorage.removeItem(STORAGE_KEY);
-  }
-
-  // ----- LOCAL STORAGE (SAVE / LOAD) -----
-  function saveState() {
-    try {
-      const json = canvas.toJSON();
-      const data = {
-        canvas: json,
-        sizeKey: currentSizeKey
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (e) {
-      console.warn("Could not save state:", e);
-    }
-  }
-
-  function loadStateOrInit() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
+    // Upload a data URL (PNG) to Cloudinary and return the secure URL
+    async function uploadPreviewImage(dataUrl) {
+      function dataURLtoBlob(dataurl) {
+        const arr = dataurl.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) { u8arr[n] = bstr.charCodeAt(n); }
+        return new Blob([u8arr], { type: mime });
+      }
+      const blob = dataURLtoBlob(dataUrl);
+      const formData = new FormData();
+      formData.append('file', blob, 'preview.png');
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
       try {
-        const data = JSON.parse(raw);
-        const sizeKey = data.sizeKey || currentSizeKey;
-        setSignSize(sizeKey);
-
-        canvas.loadFromJSON(data.canvas, () => {
-          canvas.renderAll();
-        });
-        currentSizeKey = sizeKey;
-        signSizeSelect.value = sizeKey;
-        return;
-      } catch (e) {
-        console.warn("Could not load saved state, starting fresh:", e);
+        const response = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
+        if (!response.ok) {
+          const text = await response.text();
+          console.error('Cloudinary upload error:', response.status, text);
+          // surface response in debug panel if available for easier copy/paste
+          try {
+            const panel = document.getElementById('debug-panel');
+            if (panel) {
+              panel.style.display = 'block';
+              panel.innerText = 'Cloudinary upload error: ' + response.status + '\n' + text;
+            }
+          } catch (e) {}
+          throw new Error('Cloudinary upload failed: ' + response.status + ' — ' + text);
+        }
+        const result = await response.json();
+        return result.secure_url;
+      } catch (err) {
+        // Re-throw with a clearer message for the UI and surface detailed info
+        console.error('Cloudinary fetch error', err);
+        try {
+          const panel = document.getElementById('debug-panel');
+          if (panel) {
+            panel.style.display = 'block';
+            const info = {
+              when: new Date().toISOString(),
+              requestUrl: CLOUDINARY_UPLOAD_URL,
+              uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+              navigatorOnline: (typeof navigator !== 'undefined') ? navigator.onLine : 'n/a',
+              errorName: err && err.name ? err.name : undefined,
+              errorMessage: err && err.message ? err.message : String(err)
+            };
+            panel.innerText = 'Cloudinary fetch error:\n' + JSON.stringify(info, null, 2) + '\n\n' + (err && err.stack ? err.stack : '');
+          }
+        } catch (e) { console.error('Failed to write debug panel', e); }
+        throw new Error('Cloudinary upload failed: ' + (err && err.message ? err.message : String(err)));
       }
     }
 
-    // No saved state, start with a clean canvas
-    resetCanvas();
-    setSignSize(currentSizeKey);
-  }
+    // Minimal Fabric setup and app logic
+    const PX_PER_INCH = 30;
+    const SIGN_SIZES = {
+      "12x6": { widthIn:12, heightIn:6, label:'12" × 6"' },
+      "18x9": { widthIn:18, heightIn:9, label:'18" × 9"' },
+      "24x12": { widthIn:24, heightIn:12, label:'24" × 12"' },
+      "36x18": { widthIn:36, heightIn:18, label:'36" × 18"' }
+    };
 
-  // ----- TEXT HANDLING -----
-  function addText() {
-  const value = textInput.value.trim() || "Your text here";
-  const size = SIGN_SIZES[currentSizeKey];
+    // Explicit preview pixel sizes for the on-screen preview (override)
+    // These values are used only for the preview bitmap size and do not
+    // change the human-facing size labels or the sidebar buttons.
+    const PREVIEW_PIXELS = {
+      "12x6": { width: 720, height: 360 },
+      "18x9": { width: 840, height: 420 },
+      "24x12": { width: 960, height: 480 },
+      "36x18": { width: 1080, height: 540 }
+    };
 
-  const text = new fabric.IText(value, {
-    fontSize: Math.max(20, size.heightIn * 4),
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui",
-    fill: "#111111",
-    originX: "center",
-    originY: "center"
-  });
+    // --- Pricing from Google Sheets (CSV) ---
+    // PUBLIC CSV URL for this page/client
+    const PRICING_CSV_URL =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vTgD4DBz6LppOmZJhS-KONbuy3YGmaGI5OQu80d9ZH_tepM21Dc7HYSqn9fsvlsjsyjFJjUyn-DmqH3/pub?output=csv&gid=0";
 
-  canvas.add(text);
+    // In-memory map: { sizeKey: { woodKey: "price" } }
+    let PRICING_MAP = {};
 
-  // Center the text using Fabric's helper (uses current canvas size)
-  canvas.centerObject(text);
-  text.setCoords();
+    // Load CSV and populate PRICING_MAP
+    async function fetchPricingFromSheet() {
+      try {
+        const resp = await fetch(PRICING_CSV_URL);
+        if (!resp.ok) {
+          console.error("Pricing CSV fetch failed:", resp.status, await resp.text());
+          return;
+        }
 
-  canvas.setActiveObject(text);
-  canvas.requestRenderAll();
+        const csv = await resp.text();
+        const lines = csv
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
 
-  saveState?.(); // if saveState exists in your script; otherwise remove this line
-}
+        if (!lines.length) return;
 
+        // First row is header: size_key,wood_key,price
+        lines.shift();
 
-  // ----- DOWNLOAD PNG -----
-  function downloadPNG() {
-    if (!canvas.getObjects().length) {
-      alert("Add some text or graphics before downloading a preview.");
-      return;
+        const map = {};
+
+        for (const line of lines) {
+          const parts = line.split(",");
+          if (parts.length < 3) continue;
+
+          const sizeKey = (parts[0] || "").trim();
+          const woodKey = (parts[1] || "").trim();
+          const priceRaw = (parts[2] || "").trim();
+
+          if (!sizeKey || !woodKey) continue;
+
+          if (!map[sizeKey]) map[sizeKey] = {};
+          map[sizeKey][woodKey] = priceRaw;
+        }
+
+        PRICING_MAP = map;
+
+        // Refresh UI label once prices load
+        try { updateSizeInfo(); } catch (e) {}
+        try { updateWoodGalleryPrices(); } catch (e) {}
+        try { updateFinishingGalleryPrices(); } catch (e) {}
+        try { updateAttachmentGalleryPrices(); } catch (e) {}
+      } catch (e) {
+        console.error("Failed to load pricing from sheet:", e);
+      }
     }
 
-    const dataUrl = canvas.toDataURL({
-      format: "png",
-      quality: 1
+    // Read-only accessor used elsewhere
+    function getPriceFor(sizeKey, woodKey) {
+      try {
+        const sizeMap = PRICING_MAP[sizeKey];
+        if (!sizeMap) return null;
+
+        const price = sizeMap[woodKey];
+        if (price === undefined || price === null) return null;
+
+        const trimmed = String(price).trim();
+        return trimmed === "" ? null : trimmed;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Update the wood gallery thumbnails to include price (numeric only)
+    // but only when a sign size is selected. When no size is selected,
+    // show only the wood name. This function is safe to call repeatedly.
+    function updateWoodGalleryPrices() {
+      try {
+        // Force showing prices only when the native sign-size select has a
+        // selected value. This ensures prices remain hidden if *no size*
+        // is chosen in the UI even if `currentSizeKey` has a fallback.
+        const nativeSizeValue = (signSizeSelect && signSizeSelect.value) ? signSizeSelect.value : '';
+        const sizeKey = nativeSizeValue || currentSizeKey || '';
+        const showPrices = !!nativeSizeValue;
+        const thumbs = Array.from(document.querySelectorAll('.wood-thumb'));
+        thumbs.forEach(el => {
+          try {
+            const woodKey = el.getAttribute('data-wood') || '';
+            // Find or create a label container inside the thumb
+            let labelEl = el.querySelector('.wood-thumb-label');
+            if (!labelEl) {
+              labelEl = document.createElement('div');
+              labelEl.className = 'wood-thumb-label';
+              el.appendChild(labelEl);
+            }
+
+            // Determine base display name for this wood
+            let baseName = '';
+            // Prefer an existing stored baseName to avoid overwriting custom labels
+            if (labelEl.dataset && labelEl.dataset.baseName) baseName = labelEl.dataset.baseName;
+            if (!baseName) {
+              try {
+                const sel = document.getElementById('wood-type');
+                if (sel) {
+                  const opt = Array.from(sel.options).find(o => o.value === woodKey);
+                  if (opt) baseName = opt.text;
+                }
+              } catch (e) {}
+            }
+            if (!baseName) {
+              // Fallback: derive from thumb contents or key
+              const text = (el.textContent || '').trim();
+              baseName = text || (woodKey ? (woodKey.charAt(0).toUpperCase() + woodKey.slice(1)) : '');
+            }
+            // Persist for future calls
+            try { labelEl.dataset.baseName = baseName; } catch (e) {}
+
+            if (showPrices && woodKey && sizeKey) {
+              const price = getPriceFor(sizeKey, woodKey);
+              if (price != null && String(price).trim() !== '') {
+                let raw = String(price).trim();
+                if (raw.startsWith('$')) raw = raw.slice(1).trim();
+                const cleaned = raw.replace(/[^0-9.\-]/g, '');
+                const num = parseFloat(cleaned);
+                const priceText = !isNaN(num) ? num.toFixed(2) : raw;
+                labelEl.textContent = baseName + ' ' + priceText;
+                return;
+              }
+            }
+
+            // Default: show only the base name
+              labelEl.textContent = baseName;
+          } catch (inner) { /* ignore per-thumb errors */ }
+        });
+      } catch (e) { console.warn('updateWoodGalleryPrices error', e); }
+    }
+
+      // Update finishing gallery prices (uses PRICING_MAP with option keys like 'finishing:interior')
+      function updateFinishingGalleryPrices() {
+        try {
+          const nativeSizeValue = (signSizeSelect && signSizeSelect.value) ? signSizeSelect.value : '';
+          const sizeKey = nativeSizeValue || currentSizeKey || '';
+          const showPrices = !!nativeSizeValue;
+          const woodSelected = !!(woodTypeSelect && woodTypeSelect.value);
+          const thumbs = Array.from(document.querySelectorAll('.finishing-thumb'));
+          thumbs.forEach(el => {
+            try {
+              const optionKey = el.getAttribute('data-option') || '';
+              let labelEl = el.querySelector('.wood-thumb-label');
+              if (!labelEl) {
+                labelEl = document.createElement('div');
+                labelEl.className = 'wood-thumb-label';
+                el.appendChild(labelEl);
+              }
+              let baseName = labelEl.dataset && labelEl.dataset.baseName ? labelEl.dataset.baseName : (el.textContent || '').trim();
+              try { labelEl.dataset.baseName = baseName; } catch (e) {}
+              if (showPrices && optionKey && sizeKey) {
+                const price = getPriceFor(sizeKey, optionKey);
+                if (price != null && String(price).trim() !== '') {
+                  let raw = String(price).trim();
+                  if (raw.startsWith('$')) raw = raw.slice(1).trim();
+                  const cleaned = raw.replace(/[^0-9.\-]/g, '');
+                  const num = parseFloat(cleaned);
+                  const priceText = !isNaN(num) ? num.toFixed(2) : raw;
+                  // If a wood type is selected, show only the price for finishing labels
+                  labelEl.textContent = woodSelected ? priceText : (baseName + ' ' + priceText);
+                  return;
+                }
+              }
+              labelEl.textContent = baseName;
+            } catch (inner) {}
+          });
+        } catch (e) { console.warn('updateFinishingGalleryPrices error', e); }
+      }
+
+      // Update attachment gallery prices (uses PRICING_MAP with option keys like 'attachment:hanging')
+      function updateAttachmentGalleryPrices() {
+        try {
+          const nativeSizeValue = (signSizeSelect && signSizeSelect.value) ? signSizeSelect.value : '';
+          const sizeKey = nativeSizeValue || currentSizeKey || '';
+          const showPrices = !!nativeSizeValue;
+          const woodSelected = !!(woodTypeSelect && woodTypeSelect.value);
+          const thumbs = Array.from(document.querySelectorAll('.attachment-thumb'));
+          thumbs.forEach(el => {
+            try {
+              const optionKey = el.getAttribute('data-option') || '';
+              let labelEl = el.querySelector('.wood-thumb-label');
+              if (!labelEl) {
+                labelEl = document.createElement('div');
+                labelEl.className = 'wood-thumb-label';
+                el.appendChild(labelEl);
+              }
+              let baseName = labelEl.dataset && labelEl.dataset.baseName ? labelEl.dataset.baseName : (el.textContent || '').trim();
+              try { labelEl.dataset.baseName = baseName; } catch (e) {}
+              if (showPrices && optionKey && sizeKey) {
+                const price = getPriceFor(sizeKey, optionKey);
+                if (price != null && String(price).trim() !== '') {
+                  let raw = String(price).trim();
+                  if (raw.startsWith('$')) raw = raw.slice(1).trim();
+                  const cleaned = raw.replace(/[^0-9.\-]/g, '');
+                  const num = parseFloat(cleaned);
+                  const priceText = !isNaN(num) ? num.toFixed(2) : raw;
+                  // If a wood type is selected, show only the price for attachment labels
+                  labelEl.textContent = woodSelected ? priceText : (baseName + ' ' + priceText);
+                  return;
+                }
+              }
+              labelEl.textContent = baseName;
+            } catch (inner) {}
+          });
+        } catch (e) { console.warn('updateAttachmentGalleryPrices error', e); }
+      }
+
+  const canvasElement = document.getElementById('design-canvas');
+  const canvas = new fabric.Canvas(canvasElement, { preserveObjectStacking:true, selection:true, enableRetinaScaling:false });
+
+  const signSizeSelect = document.getElementById('sign-size');
+  const sizeGallery = document.getElementById('size-gallery');
+  const sizeSelectWrapper = document.getElementById('size-select-wrapper');
+  const woodTypeSelect = document.getElementById('wood-type');
+  // canvasLabel element is no longer used for the saved name (we show it in #size-info)
+  const canvasLabel = document.getElementById('canvas-label');
+  const addTextBtn = document.getElementById('add-text-btn');
+  const addArcTextBtn = document.getElementById('add-arc-text-btn'); // NEW
+  const textInput = document.getElementById('text-input');
+      const fontSelect = document.getElementById('font-select');
+      const colorSelect = document.getElementById('color-select');
+    const removeSelectedBtn = document.getElementById('remove-selected-btn');
+    const horiCentBtn = document.getElementById('hori-cent-btn');
+    const vertCentBtn = document.getElementById('vert-cent-btn');
+    const addImageBtn = document.getElementById('add-image-btn');
+    const imageGallery = document.getElementById('image-gallery');
+    const uploadInput = document.getElementById('upload-image');
+    const resetBtn = document.getElementById('reset-canvas');
+    const downloadBtn = document.getElementById('download-png');
+    const versionField = document.getElementById('version-field');
+  const sendBtn = document.getElementById('send-design-btn');
+  const previewField = document.getElementById('preview-image-url');
+  const saveDesignBtn = document.getElementById('save-design-btn');
+  const loadDesignBtn = document.getElementById('load-design-btn');
+  const exportDesignBtn = document.getElementById('export-design-btn');
+  // Form endpoint (Formspree)
+  const FORM_ENDPOINT = 'https://formspree.io/f/xyzqodzv';
+    const sendStatus = document.getElementById('send-status');
+
+    let currentSizeKey = '24x12';
+    // Name of the currently saved/loaded design (if any)
+    let currentSavedName = '';
+    let version = 0;
+
+    function updateVersion() { versionField.value = 'v' + version + ' — ' + new Date().toLocaleTimeString(); }
+    // Update the small size/wood preview info shown next to the Download button
+    function updateSizeInfo() {
+      try {
+        const el = document.getElementById('size-info');
+        if (!el) return; // Ensure the element exists before proceeding
+        const size = SIGN_SIZES[currentSizeKey] || null;
+        const woodKey = (woodTypeSelect && woodTypeSelect.value) ? woodTypeSelect.value : '';
+        const woodLabel = (woodTypeSelect && woodTypeSelect.options && woodTypeSelect.selectedIndex > -1)
+          ? (woodTypeSelect.options[woodTypeSelect.selectedIndex].text || '')
+          : '';
+        const pxW = getCanvasWidth();
+        const pxH = getCanvasHeight();
+        const sizeLabel = size ? size.label : '';
+
+        // Determine quoted price (string) — include wood + finishing + attachment when available
+        let priceStr = null;
+        try {
+          function parsePriceToNumber(raw) {
+            try {
+              if (raw === null || raw === undefined) return null;
+              let s = String(raw).trim();
+              if (s.startsWith('$')) s = s.slice(1).trim();
+              const cleaned = s.replace(/[^0-9.\-]/g, '');
+              const n = parseFloat(cleaned);
+              return isNaN(n) ? null : n;
+            } catch (e) { return null; }
+          }
+
+          const woodRaw = (currentSizeKey && woodKey) ? getPriceFor(currentSizeKey, woodKey) : null;
+          const finishingSel = document.getElementById('finishing-select');
+          const finishingKey = finishingSel && finishingSel.value ? ('finishing:' + finishingSel.value) : null;
+          const finishingRaw = (currentSizeKey && finishingKey) ? getPriceFor(currentSizeKey, finishingKey) : null;
+          const attachmentSel = document.getElementById('attachment-select');
+          const attachmentKey = attachmentSel && attachmentSel.value ? ('attachment:' + attachmentSel.value) : null;
+          const attachmentRaw = (currentSizeKey && attachmentKey) ? getPriceFor(currentSizeKey, attachmentKey) : null;
+
+          const woodNum = parsePriceToNumber(woodRaw);
+          const finNum = parsePriceToNumber(finishingRaw);
+          const attNum = parsePriceToNumber(attachmentRaw);
+
+          // If any numeric price present, sum them for a total quoted price
+          const nums = [woodNum, finNum, attNum].filter(v => v !== null);
+          if (nums.length > 0) {
+            const total = nums.reduce((a,b) => a + b, 0);
+            priceStr = '$' + total.toFixed(2);
+          } else if (woodRaw != null && String(woodRaw).trim() !== '') {
+            // Fallback to showing raw wood price text if present
+            let raw = String(woodRaw).trim();
+            if (!raw.startsWith('$')) raw = '$' + raw;
+            priceStr = raw;
+          }
+        } catch (e) { priceStr = null; }
+
+        // Build structured DOM inside #size-info
+        try {
+          el.innerHTML = '';
+          // Wood (prominent)
+          if (woodLabel) {
+            const w = document.createElement('div');
+            w.className = 'size-info-wood';
+            w.textContent = String(woodLabel).toUpperCase();
+            el.appendChild(w);
+          }
+
+          // Main row: size and price
+          if (sizeLabel || priceStr) {
+            const main = document.createElement('div');
+            main.className = 'size-info-main';
+            if (sizeLabel) {
+              const s = document.createElement('div');
+              s.className = 'size-info-size';
+              s.textContent = sizeLabel;
+              main.appendChild(s);
+            }
+            if (priceStr) {
+              const p = document.createElement('div');
+              p.className = 'size-info-price';
+              p.textContent = priceStr;
+              main.appendChild(p);
+            }
+            el.appendChild(main);
+          }
+
+          // Pixel scale info (smaller, secondary)
+          if (pxW && pxH) {
+            const px = document.createElement('div');
+            px.className = 'size-info-px';
+            let pxText = pxW + ' × ' + pxH + ' px (preview scale)';
+            if (typeof currentSavedName === 'string' && currentSavedName) pxText += ' • ' + currentSavedName;
+            px.textContent = pxText;
+            el.appendChild(px);
+          }
+
+          // If nothing was added, keep a non-breaking space
+          if (!el.childNodes || el.childNodes.length === 0) el.textContent = '\u00A0';
+        } catch (domErr) {
+          // Fallback to the previous comma-separated format on any error
+          const parts = [];
+          if (woodLabel) parts.push(woodLabel.toUpperCase());
+          if (sizeLabel) parts.push(sizeLabel);
+          if (priceStr) parts.push(priceStr);
+          if (pxW && pxH) parts.push(pxW + ' × ' + pxH + ' px (preview scale)');
+          el.textContent = parts.join(', ') || '\u00A0';
+        }
+        // Sync hidden form fields so server-side form handlers receive size/wood/price
+        try {
+          const fs = document.getElementById('form-sign-size');
+          const fw = document.getElementById('form-wood-type');
+          const fp = document.getElementById('form-quoted-price');
+          const ff = document.getElementById('form-finishing');
+          const ffp = document.getElementById('form-finishing-price');
+          const fa = document.getElementById('form-attachment');
+          const fap = document.getElementById('form-attachment-price');
+          if (fs) fs.value = currentSizeKey || '';
+          if (fw) fw.value = woodKey || '';
+          if (fp) fp.value = priceStr || '';
+          // finishing/attachment: try to resolve selection and price
+          try {
+            const finishingSel = document.getElementById('finishing-select');
+            const finishingKey = finishingSel && finishingSel.value ? ('finishing:' + finishingSel.value) : '';
+            const finishingPrice = (currentSizeKey && finishingKey) ? getPriceFor(currentSizeKey, finishingKey) : null;
+            if (ff) ff.value = finishingSel && finishingSel.value ? finishingSel.value : '';
+            if (ffp) ffp.value = finishingPrice != null ? finishingPrice : '';
+          } catch (e) {}
+          try {
+            const attachmentSel = document.getElementById('attachment-select');
+            const attachmentKey = attachmentSel && attachmentSel.value ? ('attachment:' + attachmentSel.value) : '';
+            const attachmentPrice = (currentSizeKey && attachmentKey) ? getPriceFor(currentSizeKey, attachmentKey) : null;
+            if (fa) fa.value = attachmentSel && attachmentSel.value ? attachmentSel.value : '';
+            if (fap) fap.value = attachmentPrice != null ? attachmentPrice : '';
+          } catch (e) {}
+        } catch (e) {}
+      } catch (e) {
+        console.warn('updateSizeInfo error', e);
+      }
+    }
+    function getCanvasWidth() { const v = canvas.getWidth(); return typeof v === 'number' ? v : parseFloat(v) || canvasElement.width || 0; }
+    function getCanvasHeight() { const v = canvas.getHeight(); return typeof v === 'number' ? v : parseFloat(v) || canvasElement.height || 0; }
+
+    function setSignSize(sizeKey) {
+      const size = SIGN_SIZES[sizeKey];
+      if (!size) return;
+
+      currentSizeKey = sizeKey;
+      // Prefer explicit preview pixel overrides when provided, otherwise
+      // fall back to the PX_PER_INCH-based calculation.
+      let pxW, pxH;
+      if (PREVIEW_PIXELS && PREVIEW_PIXELS[sizeKey]) {
+        pxW = PREVIEW_PIXELS[sizeKey].width;
+        pxH = PREVIEW_PIXELS[sizeKey].height;
+      } else {
+        pxW = size.widthIn * PX_PER_INCH;
+        pxH = size.heightIn * PX_PER_INCH;
+      }
+
+      // 1) Fabric internal size
+      canvas.setWidth(pxW);
+      canvas.setHeight(pxH);
+      canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+
+      // 2) Underlying DOM canvas bitmap
+      canvasElement.width = pxW;
+      canvasElement.height = pxH;
+
+      // 3) CSS box size (what you actually see on screen)
+      // Keep the internal bitmap at true preview pixels (pxW/pxH) but
+      // compress the displayed size so the smallest sign remains usable.
+      try {
+        const maxSizeKey = '36x18';
+        const maxPxW = (SIGN_SIZES[maxSizeKey] ? SIGN_SIZES[maxSizeKey].widthIn * PX_PER_INCH : pxW);
+        // normalized in [0,1]
+        const norm = Math.max(0, Math.min(1, pxW / (maxPxW || pxW)));
+        // compress the range so smallest is ~80% of largest and largest is 100%
+        const displayFactor = 0.7 + 0.3 * norm; // 0.7..1.0
+        const displayW = Math.round(maxPxW * displayFactor);
+        const displayH = Math.round(displayW * (pxH / pxW));
+        // Apply CSS display size to the actual canvas element
+        canvasElement.style.width = displayW + 'px';
+        canvasElement.style.height = displayH + 'px';
+
+        // Also ensure Fabric's wrapper and overlay canvases use the same CSS size
+        try {
+          const wpx = displayW + 'px';
+          const hpx = displayH + 'px';
+          if (canvas.lowerCanvasEl) {
+            canvas.lowerCanvasEl.style.width = wpx;
+            canvas.lowerCanvasEl.style.height = hpx;
+          }
+          if (canvas.upperCanvasEl) {
+            canvas.upperCanvasEl.style.width = wpx;
+            canvas.upperCanvasEl.style.height = hpx;
+          }
+          if (canvas.wrapperEl) {
+            canvas.wrapperEl.style.width = wpx;
+            canvas.wrapperEl.style.height = hpx;
+          }
+        } catch (innerErr) { console.warn('Failed to sync Fabric overlay sizes', innerErr); }
+      } catch (e) {
+        canvasElement.style.width = pxW + 'px';
+        canvasElement.style.height = pxH + 'px';
+      }
+
+      canvas.calcOffset();
+      // Reapply wood background after resizing so any background image
+      // (e.g. chestnut) is set to the new canvas dimensions and scales
+      // to fill the artboard correctly.
+      try { applyWoodBackground(); } catch (e) { console.warn('Failed to reapply wood background', e); }
+      normalizeObjects();
+      canvas.renderAll();
+
+  // Keep artboard controls aligned to the canvas width
+  try { if (typeof syncArtboardControlsWidth === 'function') syncArtboardControlsWidth(); } catch (e) {}
+
+      // refresh the existing size-info area which now includes saved-name when present
+      try { updateSizeInfo(); } catch (e) { canvasLabel.textContent = `${size.label} • ${pxW} × ${pxH} px (preview scale)`; }
+      try { updateSizeInfo(); } catch (e) {}
+      try { updateWoodGalleryPrices(); } catch (e) {}
+      try { updateFinishingGalleryPrices(); } catch (e) {}
+      try { updateAttachmentGalleryPrices(); } catch (e) {}
+
+      // highlight size thumbnail when sign size changes
+      try {
+        if (sizeGallery) {
+          Array.from(sizeGallery.querySelectorAll('.size-thumb')).forEach(el => el.classList.toggle('selected', el.getAttribute('data-size') === sizeKey));
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    const WOOD_COLORS = {
+      pine: '#EDE0B4',    // light warm
+      cedar: '#D2A679',   // warm mid-brown
+      // chestnut will use an image background; keep a fallback color here
+      chestnut: '#8B5A2B', // chestnut warm brown (fallback)
+      poplar: '#EFD9B7',  // pale tan
+      composite: '#9EA3A7'// neutral gray
+    };
+
+    function getWoodColor() {
+      try {
+        const key = (woodTypeSelect && woodTypeSelect.value) ? woodTypeSelect.value : 'pine';
+        return WOOD_COLORS[key] || '#ffffff';
+      } catch (e) { return '#ffffff'; }
+    }
+
+    function applyWoodBackground() {
+      try {
+        const key = (woodTypeSelect && woodTypeSelect.value) ? woodTypeSelect.value : 'pine';
+        // If chestnut is selected, use an image background; otherwise use a flat color.
+        if (key === 'chestnut') {
+          // remove any existing background color
+          try { canvas.setBackgroundColor(null); } catch(e){}
+          const url = 'images/wood_chestnut.jpg';
+          // Load the image using Fabric so we can explicitly scale it to
+          // the current canvas dimensions. This avoids the image being
+          // painted at a previous size and not stretching when the canvas
+          // is resized.
+          try {
+            fabric.Image.fromURL(url, function(img) {
+              try {
+                // Ensure numeric natural dimensions are available
+                const iw = img.width || (img.getScaledWidth && img.getScaledWidth()) || 1;
+                const ih = img.height || (img.getScaledHeight && img.getScaledHeight()) || 1;
+                const cw = Math.max(1, canvas.getWidth());
+                const ch = Math.max(1, canvas.getHeight());
+                img.set({ originX: 'left', originY: 'top', selectable: false, evented: false });
+                img.scaleX = cw / iw;
+                img.scaleY = ch / ih;
+                // Replace any existing background image with the scaled instance
+                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                // Ensure the DOM canvas element is transparent so Fabric's
+                // background image is visible underneath.
+                try { canvasElement.style.background = 'transparent'; } catch (e) {}
+              } catch (innerErr) { console.warn('Failed to scale chestnut image', innerErr); }
+            }, { crossOrigin: 'anonymous' });
+          } catch (e) {
+            console.warn('Failed to set chestnut background image', e);
+          }
+        } else {
+          const color = getWoodColor();
+          // clear any background image first
+          try { canvas.setBackgroundImage(null); } catch(e){}
+          // Set Fabric canvas background color (this updates the lower-canvas bitmap)
+          canvas.setBackgroundColor(color, () => canvas.requestRenderAll());
+          // Also set the DOM canvas element bg for good measure
+          try { canvasElement.style.background = color; } catch (e) {}
+        }
+        try { updateSizeInfo(); } catch (e) {}
+      } catch (e) { console.error('applyWoodBackground error', e); }
+    }
+
+    function resetCanvas() { canvas.clear(); applyWoodBackground(); canvas.renderAll(); try { currentSavedName = ''; updateSizeInfo(); } catch(e){} }
+
+    // (removed: updateCanvasLabel) — use updateSizeInfo() to show size/px and saved name in the existing UI
+
+    // Keep the artboard controls width matched to the visible canvas so centered
+    // controls line up with the artboard. We'll call this on init and when
+    // the sign size or window resizes.
+    function syncArtboardControlsWidth() {
+      try {
+        const controls = document.getElementById('artboard-controls');
+        if (!controls) return;
+        // Prefer Fabric's wrapper element if available (it includes overlays),
+        // fall back to the raw canvas element's bounding rect otherwise.
+        let rect = null;
+        try { if (canvas && canvas.wrapperEl && canvas.wrapperEl.getBoundingClientRect) rect = canvas.wrapperEl.getBoundingClientRect(); } catch(e) { rect = null; }
+        if (!rect) rect = canvasElement.getBoundingClientRect();
+        // Use the wrapper/client width (CSS pixels)
+        const w = Math.max(0, Math.round(rect.width || 0));
+        controls.style.width = w + 'px';
+        // also align the download button wrapper so it sits over the artboard right edge
+        try {
+          const dl = document.getElementById('download-wrapper');
+          if (dl) dl.style.width = w + 'px';
+        } catch (e) {}
+      } catch (e) { console.warn('syncArtboardControlsWidth failed', e); }
+    }
+
+    // Show/hide and highlight the Remove Selected button based on canvas selection
+    function updateRemoveSelectedVisibility() {
+      try {
+        const btn = document.getElementById('remove-selected-btn');
+        if (!btn) return;
+        // Determine whether any Fabric object on the artboard is currently selected
+        let has = false;
+        try {
+          if (typeof canvas.getActiveObjects === 'function') {
+            const arr = canvas.getActiveObjects();
+            has = Array.isArray(arr) ? arr.length > 0 : Boolean(arr);
+          } else {
+            const a = canvas.getActiveObject ? canvas.getActiveObject() : null;
+            has = !!a;
+          }
+        } catch (e) { has = false; }
+        // Keep the button visible at all times; only toggle the red highlight
+        if (has) btn.classList.add('highlight-red'); else btn.classList.remove('highlight-red');
+        try { const h = document.getElementById('hori-cent-btn'); if (h) h.classList.toggle('highlight-red', has); } catch(e){}
+        try { const v = document.getElementById('vert-cent-btn'); if (v) v.classList.toggle('highlight-red', has); } catch(e){}
+        // Also toggle the Submit Design highlight when nothing is selected
+        try {
+          const submit = document.getElementById('to-form-btn');
+          if (submit) {
+            // Do not highlight Submit while the text input has focus.
+                const textFocused = (typeof document !== 'undefined' && document.activeElement === textInput);
+                const imageHighlighted = (addImageBtn && addImageBtn.classList && addImageBtn.classList.contains && addImageBtn.classList.contains('highlight')) || !!selectedImageSrc;
+                // Highlight Submit only when nothing on the artboard is selected and
+                // neither the text input nor an image thumbnail/add-image state is active.
+                if (!has && !textFocused && !imageHighlighted) submit.classList.add('highlight'); else submit.classList.remove('highlight');
+          }
+        } catch (e) { /* ignore submit highlight errors */ }
+      } catch (e) { console.warn('updateRemoveSelectedVisibility error', e); }
+    }
+
+    // Sidebar panel switching (design <-> form)
+    function showFormPanel() {
+      try {
+        const dp = document.getElementById('design-panel');
+        const fp = document.getElementById('form-panel');
+        if (dp) dp.classList.add('panel-hidden');
+        if (fp) fp.classList.remove('panel-hidden');
+        // focus first field in form for convenience
+        try { const f = document.getElementById('customer-name'); if (f) f.focus(); } catch (e) {}
+      } catch (e) { console.warn('showFormPanel error', e); }
+    }
+
+    function showDesignPanel() {
+      try {
+        const dp = document.getElementById('design-panel');
+        const fp = document.getElementById('form-panel');
+        if (fp) fp.classList.add('panel-hidden');
+        if (dp) dp.classList.remove('panel-hidden');
+      } catch (e) { console.warn('showDesignPanel error', e); }
+    }
+
+    function addText() {
+      const value = textInput.value.trim() || 'Your text here';
+      const size = SIGN_SIZES[currentSizeKey];
+      const pxW = getCanvasWidth(); const pxH = getCanvasHeight();
+      const text = new fabric.IText(value, {
+        left: pxW / 2, top: pxH / 2, originX: 'center', originY: 'center',
+        fill: (colorSelect && colorSelect.value) ? colorSelect.value : '#000000', fontSize: Math.max(20, size.heightIn * 4), selectable:true,
+        fontFamily: fontSelect.value || 'Arial, Helvetica, sans-serif'
+      });
+      canvas.add(text);
+      canvas.setActiveObject(text);
+      // Normalize positions so objects remain visible in the preview area
+      normalizeObjects();
+      canvas.requestRenderAll();
+      version++; updateVersion();
+      try { updateRemoveSelectedVisibility(); } catch (e) {}
+    }
+
+    // Create arced text by placing single-character Text objects along an arc
+    // Slight arc by default; radius (path diameter) will grow automatically so
+    // characters don't overlap as the string gets longer.
+    function addArcText(rawText, radius = 120) {
+      const value = (rawText || '').trim() || 'Your text here';
+      const chars = value.split('');
+      if (!chars.length) return;
+
+      const pxW = getCanvasWidth(); const pxH = getCanvasHeight();
+      const centerX = pxW / 2; const centerY = pxH / 2;
+
+      // Compute a gentle total arc in degrees based on character count
+      const degreesPerChar = 3; // small per-char degrees → slight arc
+      const minDeg = 8;
+      const maxDeg = 90; // upper bound for the arc
+      const totalDeg = Math.max(minDeg, Math.min(maxDeg, Math.round(chars.length * degreesPerChar)));
+      const totalAngle = totalDeg * Math.PI / 180;
+
+      // Base font size (used to estimate spacing)
+      const fontFamily = fontSelect.value || 'Arial, Helvetica, sans-serif';
+      const baseFontSize = Math.max(18, SIGN_SIZES[currentSizeKey].heightIn * 3);
+
+      // Desired arc spacing per character (approx char width)
+      const desiredSpacing = baseFontSize * 0.6;
+
+      // Ensure radius is large enough so arc spacing >= desiredSpacing
+      let effectiveRadius = radius;
+      if (chars.length > 1 && totalAngle > 0) {
+        const minNeededRadius = Math.ceil((desiredSpacing * (chars.length - 1)) / totalAngle);
+        if (minNeededRadius > effectiveRadius) effectiveRadius = minNeededRadius;
+      }
+
+      const step = chars.length > 1 ? totalAngle / (chars.length - 1) : 0;
+      const startAngle = -totalAngle / 2; // center the arc
+
+      const charObjects = [];
+
+      chars.forEach((ch, i) => {
+        const angle = startAngle + step * i; // radians
+        const x = centerX + effectiveRadius * Math.sin(angle);
+        const y = centerY - effectiveRadius * Math.cos(angle);
+
+        const t = new fabric.Text(ch, {
+          left: x,
+          top: y,
+          originX: 'center',
+          originY: 'center',
+          angle: angle * 180 / Math.PI,
+          fontFamily,
+          fontSize: baseFontSize,
+          fill: (colorSelect && colorSelect.value) ? colorSelect.value : '#000000',
+          selectable: true
+        });
+
+        charObjects.push(t);
+        canvas.add(t);
+      });
+
+      // Group them so you can move/scale as one object
+      const group = new fabric.Group(charObjects, {
+        left: centerX,
+        top: centerY,
+        originX: 'center',
+        originY: 'center'
+      });
+
+      // Remove individual chars and add the group
+      charObjects.forEach(o => canvas.remove(o));
+      canvas.add(group);
+      canvas.setActiveObject(group);
+
+      normalizeObjects();
+      canvas.requestRenderAll();
+      version++; updateVersion();
+      try { updateRemoveSelectedVisibility(); } catch (e) {}
+    }
+
+    function addImageBySrc(src, left = null, top = null) {
+      if (!src) return;
+      fabric.Image.fromURL(src, function(img) {
+        const pxW = getCanvasWidth(); const pxH = getCanvasHeight();
+        const x = (left === null) ? pxW/2 : left;
+        const y = (top === null) ? pxH/2 : top;
+        img.set({ left: x, top: y, originX: 'center', originY: 'center', selectable: true });
+        // Fit image to artboard: ensure width and height are at most 90% of the canvas
+        if (img.width && img.height) {
+          const maxW = pxW * 0.9;
+          const maxH = pxH * 0.9;
+          const scaleW = maxW / img.width;
+          const scaleH = maxH / img.height;
+          // Don't upscale images beyond 100% — only shrink if necessary
+          const scale = Math.min(1, scaleW, scaleH);
+          img.scaleX = img.scaleY = scale;
+        }
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        // Normalize to ensure visuals appear on screen
+        normalizeObjects();
+        canvas.requestRenderAll();
+        version++; updateVersion();
+        try { updateRemoveSelectedVisibility(); } catch (e) {}
+      }, { crossOrigin: 'anonymous' });
+    }
+
+    // Normalize object positions and viewport so items are visible on the displayed canvas
+    function normalizeObjects() {
+      try {
+        const w = getCanvasWidth(); const h = getCanvasHeight();
+        canvas.getObjects().forEach(obj => {
+          // ensure numeric positions
+          if (!isFinite(obj.left) || !isFinite(obj.top)) {
+            obj.left = w/2; obj.top = h/2;
+          }
+          // if object is far off-canvas, bring it to center
+          if (obj.left < -w || obj.left > (w * 2) || obj.top < -h || obj.top > (h * 2)) {
+            obj.left = w/2; obj.top = h/2;
+          }
+          obj.originX = obj.originX || 'center'; obj.originY = obj.originY || 'center';
+          if (typeof obj.setCoords === 'function') obj.setCoords();
+        });
+        // reset any viewport transform
+        try { canvas.setViewportTransform([1,0,0,1,0,0]); } catch(e) {}
+        canvas.calcOffset();
+      } catch (err) { console.error('normalizeObjects error', err); }
+    }
+
+    function applyFontToSelection(fontValue) {
+      const active = canvas.getActiveObjects ? canvas.getActiveObjects() : (canvas.getActiveObject() ? [canvas.getActiveObject()] : []);
+      if (!active || !active.length) return;
+      active.forEach(obj => {
+        if (obj.set && (obj.type === 'i-text' || obj.type === 'text' || typeof obj.text === 'string')) {
+          obj.set('fontFamily', fontValue);
+          if (typeof obj.initDimensions === 'function') obj.initDimensions();
+          obj.setCoords();
+        }
+      });
+      canvas.requestRenderAll();
+      version++; updateVersion();
+    }
+
+    function syncFontSelectFromSelection() {
+      const active = canvas.getActiveObject();
+      if (!active) return;
+      if (active.fontFamily) {
+        const options = Array.from(fontSelect.options).map(o => o.value);
+        if (options.includes(active.fontFamily)) fontSelect.value = active.fontFamily;
+        else {
+          const match = options.find(v => active.fontFamily.toLowerCase().includes(v.split(',')[0].toLowerCase()));
+          if (match) fontSelect.value = match; else { fontSelect.value = active.fontFamily; }
+        }
+        try { fontSelect.style.fontFamily = fontSelect.value; } catch (err) {}
+      }
+    }
+
+    // Color handling: apply a chosen color to selected text objects and sync UI
+    function applyColorToSelection(colorValue) {
+      const active = canvas.getActiveObjects ? canvas.getActiveObjects() : (canvas.getActiveObject() ? [canvas.getActiveObject()] : []);
+      if (!active || !active.length) return;
+
+      // Helper to apply color to an object or its children (for groups)
+      function applyColorToObj(o) {
+        try {
+          // If this object is a group/container, recurse into its children
+          if (o.type === 'group' || (o._objects && Array.isArray(o._objects))) {
+            const objs = o._objects || [];
+            objs.forEach(child => applyColorToObj(child));
+            // ensure group recalculation
+            if (typeof o.setCoords === 'function') o.setCoords();
+            return;
+          }
+
+          // For text-like objects and images with fill, set the fill property
+          if (o.set && (o.type === 'i-text' || o.type === 'text' || typeof o.text === 'string' || ('fill' in o))) {
+            try { o.set('fill', colorValue); } catch (e) { /* ignore */ }
+            try { if (typeof o.initDimensions === 'function') o.initDimensions(); } catch (e) {}
+            try { if (typeof o.setCoords === 'function') o.setCoords(); } catch (e) {}
+          }
+        } catch (err) { console.warn('applyColorToObj error', err); }
+      }
+
+      active.forEach(obj => applyColorToObj(obj));
+      canvas.requestRenderAll();
+      version++; updateVersion();
+      try { updateColorSelectUI(colorValue); } catch (e) {}
+    }
+
+    function syncColorSelectFromSelection() {
+      if (!colorSelect) return;
+      const active = canvas.getActiveObject();
+      if (!active) {
+        try { colorSelect.disabled = true; colorSelect.value = ''; updateColorSelectUI(''); } catch(e) {}
+        return;
+      }
+
+      // Try to read `fill` from the active object. If it's a group, inspect children.
+      let fill = active.fill;
+      try {
+        if (!fill && (active.type === 'group' || active._objects)) {
+          const objs = active._objects || (typeof active.getObjects === 'function' ? active.getObjects() : []);
+          for (let i = 0; i < objs.length; i++) {
+            if (objs[i] && objs[i].fill) { fill = objs[i].fill; break; }
+          }
+        }
+      } catch (e) { /* ignore */ }
+      if (!fill) {
+        try { colorSelect.disabled = true; colorSelect.value = ''; updateColorSelectUI(''); } catch(e) {}
+        return;
+      }
+
+      // Enable the select when we have a color from the selection
+      try { colorSelect.disabled = false; } catch (e) {}
+
+      try {
+        // Normalize color into a canonical hex string when possible
+        const norm = normalizeColorString(fill);
+        const opts = Array.from(colorSelect.options).map(o => (o.value || '').toLowerCase());
+        if (norm && opts.includes(norm.toLowerCase())) {
+          // preserve option value casing by finding the actual option
+          const found = Array.from(colorSelect.options).find(o => (o.value||'').toLowerCase() === String(norm).toLowerCase());
+          if (found) colorSelect.value = found.value; else colorSelect.value = norm;
+        } else if (norm) {
+          try { colorSelect.value = ''; } catch (e) {}
+        } else {
+          try { colorSelect.value = String(fill); } catch (e) {}
+        }
+        try { updateColorSelectUI(norm || String(fill)); } catch (e) {}
+      } catch (e) { console.warn('syncColorSelectFromSelection error', e); }
+    }
+
+    // Normalize common color string formats (hex, #rgb, rgb(...)) to #rrggbb
+    function normalizeColorString(col) {
+      try {
+        if (!col) return null;
+        const s = String(col).trim();
+        if (s[0] === '#') {
+          // Expand short hex like #abc to #aabbcc
+          if (s.length === 4) {
+            return ('#' + s[1] + s[1] + s[2] + s[2] + s[3] + s[3]).toLowerCase();
+          }
+          return s.length === 7 ? s.toLowerCase() : s.toLowerCase();
+        }
+        // rgb(...) or rgba(...)
+        const m = s.match(/rgba?\s*\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/i);
+        if (m) {
+          const r = parseInt(m[1], 10); const g = parseInt(m[2], 10); const b = parseInt(m[3], 10);
+          const toHex = (n) => ('0' + Math.max(0, Math.min(255, n)).toString(16)).slice(-2);
+          return ('#' + toHex(r) + toHex(g) + toHex(b)).toLowerCase();
+        }
+        return null;
+      } catch (e) { return null; }
+    }
+
+    // Update the color select's visual state: value (if it matches a preset),
+    // background color, contrasting text color, and a subtle text shadow.
+    function updateColorSelectUI(colorValue) {
+      try {
+        if (!colorSelect) return;
+        const norm = normalizeColorString(colorValue) || colorValue || '';
+        const opts = Array.from(colorSelect.options).map(o => (o.value || '').toLowerCase());
+        if (norm && opts.includes(String(norm).toLowerCase())) {
+          const foundOpt = Array.from(colorSelect.options).find(o => (o.value||'').toLowerCase() === String(norm).toLowerCase());
+          if (foundOpt) colorSelect.value = foundOpt.value; else colorSelect.value = norm;
+        } else {
+          // Don't set a raw value that doesn't match an option; keep value empty
+          // so the native option label remains visible, but show the color visually.
+          colorSelect.value = '';
+        }
+        // Style the select's displayed text only (keep the background white).
+        try {
+          const lower = String(norm).toLowerCase();
+          if (!norm) {
+            colorSelect.style.color = '#000000';
+            colorSelect.style.textShadow = '';
+          } else if (lower === '#ffffff' || lower === 'white') {
+            // White text needs a dark drop shadow to be visible on white background
+            colorSelect.style.color = '#ffffff';
+            colorSelect.style.textShadow = '0 1px 2px rgba(0,0,0,0.8)';
+          } else {
+            colorSelect.style.color = norm;
+            colorSelect.style.textShadow = '0 1px 2px rgba(0,0,0,0.6)';
+          }
+          // Ensure the select background remains the default/white
+          colorSelect.style.background = '';
+        } catch (e) {}
+      } catch (e) { console.warn('updateColorSelectUI error', e); }
+    }
+
+    
+
+    // Small helper to pick readable text color for colored backgrounds
+    function getContrastColor(hex) {
+      try {
+        if (!hex) return '#000000';
+        const h = hex.replace('#','');
+        if (h.length !== 6) return '#000000';
+        const r = parseInt(h.substr(0,2),16);
+        const g = parseInt(h.substr(2,2),16);
+        const b = parseInt(h.substr(4,2),16);
+        const yiq = (r*299 + g*587 + b*114) / 1000;
+        return yiq >= 128 ? '#000000' : '#ffffff';
+      } catch (e) { return '#000000'; }
+    }
+
+    // Image gallery wiring
+    let selectedImageSrc = null;
+    function attachThumbHandlers(el) {
+      const src = el.getAttribute('data-src');
+      el.setAttribute('draggable', 'true');
+      el.addEventListener('dragstart', (ev) => { try { ev.dataTransfer.setData('text/plain', src); } catch (e) {} });
+      el.addEventListener('click', () => {
+        try {
+          imageGallery.querySelectorAll('.thumb').forEach(t => t.style.outline = '');
+          el.style.outline = '3px solid rgba(0,122,255,0.8)';
+          selectedImageSrc = src;
+          try { if (addImageBtn) addImageBtn.classList.add('highlight'); } catch(e){}
+          try { updateRemoveSelectedVisibility(); } catch (e) {}
+        } catch (err) { console.warn('thumb click failed', err); }
+      });
+    }
+    Array.from(imageGallery.querySelectorAll('.thumb')).forEach(attachThumbHandlers);
+
+    // Size gallery wiring: clicking a thumb selects the size
+    function attachSizeThumbHandlers(el) {
+      const key = el.getAttribute('data-size');
+      el.addEventListener('click', () => {
+        try {
+          if (signSizeSelect) { signSizeSelect.value = key; }
+          setSignSize(key);
+          // collapse the gallery after selection
+          try { if (typeof showSizeGallery === 'function') showSizeGallery(false); } catch (e) {}
+        } catch (e) { console.warn('size thumb click failed', e); }
+      });
+    }
+    if (sizeGallery) Array.from(sizeGallery.querySelectorAll('.size-thumb')).forEach(attachSizeThumbHandlers);
+    // keep gallery in sync when select changes (keyboard or programmatic)
+    safeAddListener(signSizeSelect, 'change', (e) => { try { const v = e.target.value; if (v) { Array.from(document.querySelectorAll('.size-thumb')).forEach(el => el.classList.toggle('selected', el.getAttribute('data-size') === v)); } try { updateWoodGalleryPrices(); } catch (uerr) {} try { updateFinishingGalleryPrices(); } catch (uerr2) {} try { updateAttachmentGalleryPrices(); } catch (uerr3) {} } catch (err) { console.warn('size-gallery-sync error', err); } }, 'size-gallery-sync');
+
+    // Show/hide the size gallery as a fly-out
+    function showSizeGallery(show) {
+      try {
+        if (!sizeGallery || !sizeSelectWrapper) return;
+        if (show) {
+          // Position the gallery as fixed so it sits above the sidebar and isn't clipped
+          const rect = sizeSelectWrapper.getBoundingClientRect();
+          sizeGallery.style.position = 'fixed';
+          sizeGallery.style.left = rect.left + 'px';
+          sizeGallery.style.top = (rect.bottom + 8) + 'px';
+          sizeGallery.style.width = rect.width + 'px';
+          sizeGallery.style.zIndex = '9999';
+          sizeGallery.classList.add('expanded');
+          sizeGallery.setAttribute('aria-hidden', 'false');
+          try { const t = document.getElementById('size-toggle'); if (t) t.setAttribute('aria-expanded', 'true'); } catch(e){}
+        } else {
+          sizeGallery.classList.remove('expanded');
+          sizeGallery.setAttribute('aria-hidden', 'true');
+          // reset positioning to allow it to flow normally when not visible
+          sizeGallery.style.position = '';
+          sizeGallery.style.left = '';
+          sizeGallery.style.top = '';
+          sizeGallery.style.width = '';
+          sizeGallery.style.zIndex = '';
+          try { const t = document.getElementById('size-toggle'); if (t) t.setAttribute('aria-expanded', 'false'); } catch(e){}
+        }
+      } catch (e) { console.warn('showSizeGallery error', e); }
+    }
+
+    // The native select can open a browser dropdown which interferes with the fly-out.
+    // Instead use an overlay toggle button to open/close the gallery.
+    const sizeToggle = document.getElementById('size-toggle');
+    if (sizeToggle) {
+      safeAddListener(sizeToggle, 'click', (e) => { try { const expanded = sizeGallery && sizeGallery.classList.contains('expanded'); showSizeGallery(!expanded); sizeToggle.setAttribute('aria-expanded', String(!expanded)); } catch (err) { console.warn('sizeToggle click', err); } }, 'size-toggle-click');
+      safeAddListener(sizeToggle, 'keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sizeToggle.click(); } }, 'size-toggle-key');
+    }
+
+    // Wood gallery wiring: clicking a thumb selects the wood type
+    const woodGallery = document.getElementById('wood-gallery');
+    const woodSelectWrapper = document.getElementById('wood-select-wrapper');
+    function attachWoodThumbHandlers(el) {
+      const key = el.getAttribute('data-wood');
+      el.addEventListener('click', () => {
+        try {
+          const ws = document.getElementById('wood-type');
+          if (ws) { ws.value = key; }
+          try { applyWoodBackground(); } catch(e){}
+          // highlight
+          Array.from(document.querySelectorAll('.wood-thumb')).forEach(w => w.classList.toggle('selected', w.getAttribute('data-wood') === key));
+          // collapse the gallery after selection
+          try { if (typeof showWoodGallery === 'function') showWoodGallery(false); } catch (e) {}
+        } catch (e) { console.warn('wood thumb click failed', e); }
+      });
+    }
+    if (woodGallery) Array.from(woodGallery.querySelectorAll('.wood-thumb')).forEach(attachWoodThumbHandlers);
+    try { updateWoodGalleryPrices(); } catch (e) {}
+    // keep wood gallery in sync when select changes
+    safeAddListener(document.getElementById('wood-type'), 'change', (e) => { try { const v = e.target.value; if (v) { Array.from(document.querySelectorAll('.wood-thumb')).forEach(el => el.classList.toggle('selected', el.getAttribute('data-wood') === v)); } try { updateWoodGalleryPrices(); } catch (uerr) {} } catch (err) { console.warn('wood-gallery-sync error', err); } }, 'wood-gallery-sync');
+
+    // --- Finishing gallery wiring (INTERIOR / EXTERIOR)
+    const finishingGallery = document.getElementById('finishing-gallery');
+    const finishingSelectWrapper = document.getElementById('finishing-select-wrapper');
+    function attachFinishingThumbHandlers(el) {
+      const opt = el.getAttribute('data-option');
+      el.addEventListener('click', () => {
+        try {
+          const sel = document.getElementById('finishing-select');
+          if (sel) sel.value = (opt && opt.indexOf(':') > -1) ? opt.split(':')[1] : opt;
+          try { updateFinishingGalleryPrices(); } catch(e){}
+          try { updateSizeInfo(); } catch(e){}
+          Array.from(document.querySelectorAll('.finishing-thumb')).forEach(w => w.classList.toggle('selected', w.getAttribute('data-option') === opt));
+          try { if (typeof showFinishingGallery === 'function') showFinishingGallery(false); } catch (e) {}
+        } catch (e) { console.warn('finishing thumb click failed', e); }
+      });
+    }
+    if (finishingGallery) Array.from(finishingGallery.querySelectorAll('.finishing-thumb')).forEach(attachFinishingThumbHandlers);
+    safeAddListener(document.getElementById('finishing-select'), 'change', (e) => { try { const v = e.target.value; if (v) { Array.from(document.querySelectorAll('.finishing-thumb')).forEach(el => el.classList.toggle('selected', (el.getAttribute('data-option')||'').endsWith(':'+v))); } try { updateFinishingGalleryPrices(); } catch (uerr) {} try { updateSizeInfo(); } catch (uerr2) {} } catch (err) { console.warn('finishing-gallery-sync error', err); } }, 'finishing-gallery-sync');
+
+    function showFinishingGallery(show) {
+      try {
+        if (!finishingGallery || !finishingSelectWrapper) return;
+        if (show) {
+          const rect = finishingSelectWrapper.getBoundingClientRect();
+          finishingGallery.style.position = 'fixed';
+          finishingGallery.style.left = rect.left + 'px';
+          finishingGallery.style.top = (rect.bottom + 8) + 'px';
+          finishingGallery.style.width = rect.width + 'px';
+          finishingGallery.style.zIndex = '9999';
+          finishingGallery.classList.add('expanded');
+          finishingGallery.setAttribute('aria-hidden', 'false');
+          try { const t = document.getElementById('finishing-toggle'); if (t) t.setAttribute('aria-expanded', 'true'); } catch(e){}
+        } else {
+          finishingGallery.classList.remove('expanded');
+          finishingGallery.setAttribute('aria-hidden', 'true');
+          finishingGallery.style.position = '';
+          finishingGallery.style.left = '';
+          finishingGallery.style.top = '';
+          finishingGallery.style.width = '';
+          finishingGallery.style.zIndex = '';
+          try { const t = document.getElementById('finishing-toggle'); if (t) t.setAttribute('aria-expanded', 'false'); } catch(e){}
+        }
+      } catch (e) { console.warn('showFinishingGallery error', e); }
+    }
+
+    const finishingToggle = document.getElementById('finishing-toggle');
+    if (finishingToggle) {
+      safeAddListener(finishingToggle, 'click', (e) => { try { const expanded = finishingGallery && finishingGallery.classList.contains('expanded'); showFinishingGallery(!expanded); finishingToggle.setAttribute('aria-expanded', String(!expanded)); } catch (err) { console.warn('finishingToggle click', err); } }, 'finishing-toggle-click');
+      safeAddListener(finishingToggle, 'keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); finishingToggle.click(); } }, 'finishing-toggle-key');
+    }
+
+    // --- Attachment gallery wiring (HANGING / BACK ATTACH / NO ATTACH)
+    const attachmentGallery = document.getElementById('attachment-gallery');
+    const attachmentSelectWrapper = document.getElementById('attachment-select-wrapper');
+    function attachAttachmentThumbHandlers(el) {
+      const opt = el.getAttribute('data-option');
+      el.addEventListener('click', () => {
+        try {
+          const sel = document.getElementById('attachment-select');
+          if (sel) sel.value = (opt && opt.indexOf(':') > -1) ? opt.split(':')[1] : opt;
+          try { updateAttachmentGalleryPrices(); } catch(e){}
+          try { updateSizeInfo(); } catch(e){}
+          Array.from(document.querySelectorAll('.attachment-thumb')).forEach(w => w.classList.toggle('selected', w.getAttribute('data-option') === opt));
+          try { if (typeof showAttachmentGallery === 'function') showAttachmentGallery(false); } catch (e) {}
+        } catch (e) { console.warn('attachment thumb click failed', e); }
+      });
+    }
+    if (attachmentGallery) Array.from(attachmentGallery.querySelectorAll('.attachment-thumb')).forEach(attachAttachmentThumbHandlers);
+    safeAddListener(document.getElementById('attachment-select'), 'change', (e) => { try { const v = e.target.value; if (v) { Array.from(document.querySelectorAll('.attachment-thumb')).forEach(el => el.classList.toggle('selected', (el.getAttribute('data-option')||'').endsWith(':'+v))); } try { updateAttachmentGalleryPrices(); } catch (uerr) {} try { updateSizeInfo(); } catch (uerr2) {} } catch (err) { console.warn('attachment-gallery-sync error', err); } }, 'attachment-gallery-sync');
+
+    function showAttachmentGallery(show) {
+      try {
+        if (!attachmentGallery || !attachmentSelectWrapper) return;
+        if (show) {
+          const rect = attachmentSelectWrapper.getBoundingClientRect();
+          attachmentGallery.style.position = 'fixed';
+          attachmentGallery.style.left = rect.left + 'px';
+          attachmentGallery.style.top = (rect.bottom + 8) + 'px';
+          attachmentGallery.style.width = rect.width + 'px';
+          attachmentGallery.style.zIndex = '9999';
+          attachmentGallery.classList.add('expanded');
+          attachmentGallery.setAttribute('aria-hidden', 'false');
+          try { const t = document.getElementById('attachment-toggle'); if (t) t.setAttribute('aria-expanded', 'true'); } catch(e){}
+        } else {
+          attachmentGallery.classList.remove('expanded');
+          attachmentGallery.setAttribute('aria-hidden', 'true');
+          attachmentGallery.style.position = '';
+          attachmentGallery.style.left = '';
+          attachmentGallery.style.top = '';
+          attachmentGallery.style.width = '';
+          attachmentGallery.style.zIndex = '';
+          try { const t = document.getElementById('attachment-toggle'); if (t) t.setAttribute('aria-expanded', 'false'); } catch(e){}
+        }
+      } catch (e) { console.warn('showAttachmentGallery error', e); }
+    }
+
+    const attachmentToggle = document.getElementById('attachment-toggle');
+    if (attachmentToggle) {
+      safeAddListener(attachmentToggle, 'click', (e) => { try { const expanded = attachmentGallery && attachmentGallery.classList.contains('expanded'); showAttachmentGallery(!expanded); attachmentToggle.setAttribute('aria-expanded', String(!expanded)); } catch (err) { console.warn('attachmentToggle click', err); } }, 'attachment-toggle-click');
+      safeAddListener(attachmentToggle, 'keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); attachmentToggle.click(); } }, 'attachment-toggle-key');
+    }
+
+    // Show/hide the wood gallery as a fly-out
+    function showWoodGallery(show) {
+      try {
+        if (!woodGallery || !woodSelectWrapper) return;
+        if (show) {
+          const rect = woodSelectWrapper.getBoundingClientRect();
+          woodGallery.style.position = 'fixed';
+          woodGallery.style.left = rect.left + 'px';
+          woodGallery.style.top = (rect.bottom + 8) + 'px';
+          woodGallery.style.width = rect.width + 'px';
+          woodGallery.style.zIndex = '9999';
+          woodGallery.classList.add('expanded');
+          woodGallery.setAttribute('aria-hidden', 'false');
+          try { const t = document.getElementById('wood-toggle'); if (t) t.setAttribute('aria-expanded', 'true'); } catch(e){}
+        } else {
+          woodGallery.classList.remove('expanded');
+          woodGallery.setAttribute('aria-hidden', 'true');
+          woodGallery.style.position = '';
+          woodGallery.style.left = '';
+          woodGallery.style.top = '';
+          woodGallery.style.width = '';
+          woodGallery.style.zIndex = '';
+          try { const t = document.getElementById('wood-toggle'); if (t) t.setAttribute('aria-expanded', 'false'); } catch(e){}
+        }
+      } catch (e) { console.warn('showWoodGallery error', e); }
+    }
+
+    // wood toggle button wiring
+    const woodToggle = document.getElementById('wood-toggle');
+    if (woodToggle) {
+      safeAddListener(woodToggle, 'click', (e) => { try { const expanded = woodGallery && woodGallery.classList.contains('expanded'); showWoodGallery(!expanded); woodToggle.setAttribute('aria-expanded', String(!expanded)); } catch (err) { console.warn('woodToggle click', err); } }, 'wood-toggle-click');
+      safeAddListener(woodToggle, 'keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); woodToggle.click(); } }, 'wood-toggle-key');
+    }
+
+    // Prevent the native wood <select> from opening on mouse click — intercept
+    // mouse interactions and show our custom fly-out instead. Keep keyboard
+    // usage (change events) intact.
+    try {
+      if (woodTypeSelect) {
+        woodTypeSelect.addEventListener('mousedown', (ev) => {
+          try {
+            ev.preventDefault();
+            // toggle the gallery when user clicks the select area
+            const expanded = woodGallery && woodGallery.classList.contains('expanded');
+            showWoodGallery(!expanded);
+            try { if (woodToggle) woodToggle.setAttribute('aria-expanded', String(!expanded)); } catch(e){}
+          } catch (e) { console.warn('wood select mousedown handler', e); }
+        });
+        // Also guard against direct click events in some browsers
+        woodTypeSelect.addEventListener('click', (ev) => { try { ev.preventDefault(); } catch(e){} });
+      }
+    } catch (e) { console.warn('Failed to attach wood select guard', e); }
+
+    // close when clicking outside the wrappers (size, wood) and clear
+    // image selection when clicking away from the image gallery or the add button
+    safeAddListener(document, 'click', (ev) => {
+      try {
+        let clickedInsideSize = sizeSelectWrapper && sizeSelectWrapper.contains(ev.target);
+        let clickedInsideWood = woodSelectWrapper && woodSelectWrapper.contains(ev.target);
+        let clickedInsideFinishing = finishingSelectWrapper && finishingSelectWrapper.contains(ev.target);
+        let clickedInsideAttachment = attachmentSelectWrapper && attachmentSelectWrapper.contains(ev.target);
+        if (!clickedInsideSize) showSizeGallery(false);
+        if (!clickedInsideWood) showWoodGallery(false);
+        if (!clickedInsideFinishing) showFinishingGallery(false);
+        if (!clickedInsideAttachment) showAttachmentGallery(false);
+
+        // Image selection: if the user clicked outside the image gallery and
+        // didn't click the Add Image button, clear the selected thumbnail
+        try {
+          const clickedInsideImage = imageGallery && imageGallery.contains(ev.target);
+          const clickedOnAddImage = addImageBtn && addImageBtn.contains(ev.target);
+          if (!clickedInsideImage && !clickedOnAddImage) {
+            // clear selection UI
+            selectedImageSrc = null;
+            try { Array.from(imageGallery.querySelectorAll('.thumb')).forEach(t => t.style.outline = ''); } catch(e){}
+            try { if (addImageBtn) addImageBtn.classList.remove('highlight'); } catch(e){}
+            try { updateRemoveSelectedVisibility(); } catch (e) {}
+          }
+        } catch (e) { /* ignore image-clear errors */ }
+
+      } catch (e) { /* ignore */ }
+    }, 'galleries-outside');
+    function createThumb(src) { const el = document.createElement('div'); el.className='thumb'; el.setAttribute('data-src', src); const img=document.createElement('img'); img.src=src; img.style.maxWidth='100%'; img.style.maxHeight='100%'; el.appendChild(img); imageGallery.appendChild(el); attachThumbHandlers(el); el.click(); return el; }
+    // wire upload input safely
+    if (uploadInput) safeAddListener(uploadInput, 'change', (ev) => { const files = Array.from(ev.target.files||[]); files.forEach(file => { if (!file.type.startsWith('image/')) return; const reader = new FileReader(); reader.onload = (e) => createThumb(e.target.result); reader.readAsDataURL(file); }); uploadInput.value = ''; }, 'upload-input');
+
+    // wire add image safely
+    safeAddListener(addImageBtn, 'click', () => {
+      let src = selectedImageSrc;
+      if (!src) {
+        const first = imageGallery.querySelector('.thumb');
+        if (first) src = first.getAttribute('data-src');
+      }
+      if (src) {
+        addImageBySrc(src);
+        // clear selection highlight after adding
+        try { selectedImageSrc = null; Array.from(imageGallery.querySelectorAll('.thumb')).forEach(t => t.style.outline = ''); } catch(e){}
+        try { if (addImageBtn) addImageBtn.classList.remove('highlight'); } catch(e){}
+        try { updateRemoveSelectedVisibility(); } catch (e) {}
+      } else alert('Select an image thumbnail first or upload one using UPLOAD IMAGE.');
+    }, 'add-image-btn');
+    canvasElement.addEventListener('dragover', (ev) => ev.preventDefault());
+    canvasElement.addEventListener('drop', (ev) => { ev.preventDefault(); const src = ev.dataTransfer.getData('text/plain'); if (!src) return; const rect = canvasElement.getBoundingClientRect(); const x = (ev.clientX - rect.left) * (canvas.width / rect.width); const y = (ev.clientY - rect.top) * (canvas.height / rect.height); addImageBySrc(src, x, y); });
+
+    // Hidden import input for design JSON files
+    try {
+      const importInput = document.createElement('input');
+      importInput.type = 'file';
+      importInput.accept = '.json,application/json';
+      importInput.id = 'import-design-file';
+      importInput.style.display = 'none';
+      document.body.appendChild(importInput);
+      importInput.addEventListener('change', (ev) => {
+        try {
+          const f = ev.target.files && ev.target.files[0];
+          if (!f) return;
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const parsed = JSON.parse(e.target.result);
+              loadDesignFromObject(parsed);
+              sendStatus.textContent = 'Imported design file.';
+            } catch (err) { console.warn('Failed to parse imported design', err); alert('Failed to import design file.'); }
+          };
+          reader.readAsText(f);
+          importInput.value = '';
+        } catch (err) { console.warn('import change failed', err); }
+      });
+    } catch (e) { /* ignore */ }
+
+  fontSelect.addEventListener('change', (e) => { try { fontSelect.style.fontFamily = e.target.value; } catch (err) {} ; applyFontToSelection(e.target.value); });
+    if (colorSelect) colorSelect.addEventListener('change', (e) => { try { updateColorSelectUI(e.target.value); } catch (err) { console.warn(err); } ; applyColorToSelection(e.target.value); });
+    // Disable color select until a text object is selected
+    try { if (colorSelect) colorSelect.disabled = true; } catch(e) {}
+    canvas.on('selection:created', (e) => { try { syncFontSelectFromSelection(e); syncColorSelectFromSelection(e); updateRemoveSelectedVisibility(); } catch(err){} });
+    canvas.on('selection:updated', (e) => { try { syncFontSelectFromSelection(e); syncColorSelectFromSelection(e); updateRemoveSelectedVisibility(); } catch(err){} });
+    canvas.on('selection:created', syncColorSelectFromSelection);
+    canvas.on('selection:updated', syncColorSelectFromSelection);
+    canvas.on('selection:cleared', () => {
+      try {
+        if (colorSelect) { colorSelect.value = ''; colorSelect.disabled = true; updateColorSelectUI(''); }
+        try { updateRemoveSelectedVisibility(); } catch(e){}
+      } catch(e) {}
     });
 
-    const link = document.createElement("a");
-    link.href = dataUrl;
-    link.download = `sign-preview-${currentSizeKey}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Hori Cent button: center active object/group horizontally on the artboard
+    try {
+      if (horiCentBtn) {
+        safeAddListener(horiCentBtn, 'click', () => {
+          try {
+            const active = canvas.getActiveObject ? canvas.getActiveObject() : null;
+            if (!active) return;
+            const centerX = Math.max(0, canvas.getWidth() / 2);
+            // Prefer setting via Fabric API
+            try {
+              if (typeof active.set === 'function') active.set('left', centerX);
+              else active.left = centerX;
+              if (typeof active.setCoords === 'function') active.setCoords();
+            } catch (e) {
+              // Fallback: center each active object if activeSelection
+              try {
+                const actives = canvas.getActiveObjects ? canvas.getActiveObjects() : [active];
+                actives.forEach(o => {
+                  try { o.set('left', centerX); if (typeof o.setCoords === 'function') o.setCoords(); } catch (ee) {}
+                });
+              } catch (ee) {}
+            }
+            canvas.requestRenderAll();
+            version++; updateVersion();
+            try { updateRemoveSelectedVisibility(); } catch (e) {}
+          } catch (err) { console.warn('Hori Cent failed', err); }
+        }, 'hori-cent-click');
+      }
+    } catch (e) { console.warn('Failed to wire hori-cent-btn', e); }
+
+    // Vert Cent button: center active object/group vertically on the artboard
+    try {
+      if (vertCentBtn) {
+        safeAddListener(vertCentBtn, 'click', () => {
+          try {
+            const active = canvas.getActiveObject ? canvas.getActiveObject() : null;
+            if (!active) return;
+            const centerY = Math.max(0, canvas.getHeight() / 2);
+            // Prefer setting via Fabric API
+            try {
+              if (typeof active.set === 'function') active.set('top', centerY);
+              else active.top = centerY;
+              if (typeof active.setCoords === 'function') active.setCoords();
+            } catch (e) {
+              // Fallback: center each active object if activeSelection
+              try {
+                const actives = canvas.getActiveObjects ? canvas.getActiveObjects() : [active];
+                actives.forEach(o => {
+                  try { o.set('top', centerY); if (typeof o.setCoords === 'function') o.setCoords(); } catch (ee) {}
+                });
+              } catch (ee) {}
+            }
+            canvas.requestRenderAll();
+            version++; updateVersion();
+            try { updateRemoveSelectedVisibility(); } catch (e) {}
+          } catch (err) { console.warn('Vert Cent failed', err); }
+        }, 'vert-cent-click');
+      }
+    } catch (e) { console.warn('Failed to wire vert-cent-btn', e); }
+
+    // Send design request
+    async function sendDesignRequest() {
+      sendBtn.disabled = true;
+      let usedFallback = false;
+      let cloudinaryError = null;
+      let formSucceeded = false;
+      try {
+        sendStatus.textContent = 'Preparing preview...';
+        const pngDataUrl = canvas.toDataURL({ format: 'png', quality: 1 });
+        sendStatus.textContent = 'Uploading preview...';
+        let previewUrl = null;
+        try {
+          previewUrl = await uploadPreviewImage(pngDataUrl);
+          previewField.value = previewUrl;
+        } catch (uploadErr) {
+          console.warn('Preview upload failed (Cloudinary):', uploadErr);
+          cloudinaryError = uploadErr && (uploadErr.message || String(uploadErr));
+          if (USE_FORMSPREE_FALLBACK) {
+            usedFallback = true;
+            sendStatus.textContent = 'Upload failed — sending form with inline preview...';
+            try { const panel = document.getElementById('debug-panel'); if (panel) { panel.style.display='block'; panel.innerText = 'Cloudinary upload failed, using Formspree fallback:\n' + cloudinaryError; } } catch(e){}
+            // continue — previewUrl stays null and we'll attach the base64
+          } else {
+            // rethrow so outer catch will surface a failure
+            throw uploadErr;
+          }
+        }
+
+        sendStatus.textContent = 'Sending request...';
+        // Collect fields manually since there is no <form> element
+        const formData = new FormData();
+        formData.append('name', (document.getElementById('customer-name') || { value: '' }).value);
+        formData.append('email', (document.getElementById('customer-email') || { value: '' }).value);
+        formData.append('phone', (document.getElementById('customer-phone') || { value: '' }).value);
+        formData.append('comments', (document.getElementById('customer-comments') || { value: '' }).value);
+        if (previewUrl) {
+          formData.append('preview_image_url', previewUrl);
+        } else {
+          // fallback: attach the base64 PNG so the server receives a preview even when Cloudinary fails
+          formData.append('preview_data_url', pngDataUrl);
+        }
+        formData.append('sign_size', currentSizeKey);
+  // include wood type selected in the top-bar
+  try {
+    formData.append('wood_type', (woodTypeSelect && woodTypeSelect.value) ? woodTypeSelect.value : '');
+  } catch (e) {
+    console.warn('woodTypeSelect missing', e);
   }
 
-  // ----- EVENT BINDINGS -----
-  signSizeSelect.addEventListener("change", (e) => {
-    setSignSize(e.target.value);
-    saveState();
-  });
+  // include quoted price (combined wood + finishing + attachment) from hidden field
+  try {
+    const fpEl = document.getElementById('form-quoted-price');
+    const q = fpEl && fpEl.value ? fpEl.value : '';
+    if (q) formData.append('quoted_price', q);
+  } catch (e) {
+    console.warn('Failed to append quoted price', e);
+  }
 
-  addTextBtn.addEventListener("click", addText);
-
-  resetBtn.addEventListener("click", () => {
-    if (confirm("Clear the sign and start over?")) {
-      resetCanvas();
-      setSignSize(currentSizeKey);
+  // include finishing and attachment selections + prices
+  try {
+    const finishingVal = (document.getElementById('finishing-select') && document.getElementById('finishing-select').value) ? document.getElementById('finishing-select').value : '';
+    if (finishingVal) {
+      formData.append('finishing_type', finishingVal);
+      const fk = currentSizeKey && finishingVal ? getPriceFor(currentSizeKey, 'finishing:' + finishingVal) : null;
+      if (fk != null && fk !== '') formData.append('finishing_price', String(fk).startsWith('$') ? String(fk) : '$' + String(fk));
     }
-  });
+  } catch (e) { console.warn('Failed to append finishing', e); }
 
-  downloadBtn.addEventListener("click", downloadPNG);
+  try {
+    const attachmentVal = (document.getElementById('attachment-select') && document.getElementById('attachment-select').value) ? document.getElementById('attachment-select').value : '';
+    if (attachmentVal) {
+      formData.append('attachment_type', attachmentVal);
+      const ak = currentSizeKey && attachmentVal ? getPriceFor(currentSizeKey, 'attachment:' + attachmentVal) : null;
+      if (ak != null && ak !== '') formData.append('attachment_price', String(ak).startsWith('$') ? String(ak) : '$' + String(ak));
+    }
+  } catch (e) { console.warn('Failed to append attachment', e); }
 
-  // Autosave when user edits objects on the canvas
-  canvas.on("object:modified", saveState);
-  canvas.on("object:added", saveState);
-  canvas.on("object:removed", saveState);
+        // Submit to Formspree and capture detailed failures in the debug panel
+        try {
+          const resp = await fetch(FORM_ENDPOINT, { method: 'POST', body: formData });
+          if (!resp.ok) {
+            const txt = await resp.text();
+            try { const panel = document.getElementById('debug-panel'); if (panel) { panel.style.display='block'; panel.innerText = 'Formspree submission error: ' + resp.status + '\n' + txt; } } catch(e){}
+            throw new Error('Form submission failed: ' + txt);
+          }
+          formSucceeded = true;
+        } catch (formErr) {
+          console.error('Form submission error', formErr);
+          try {
+            const panel = document.getElementById('debug-panel');
+            if (panel) {
+              panel.style.display = 'block';
+              const info = {
+                when: new Date().toISOString(),
+                endpoint: FORM_ENDPOINT,
+                navigatorOnline: (typeof navigator !== 'undefined') ? navigator.onLine : 'n/a',
+                errorName: formErr && formErr.name ? formErr.name : undefined,
+                errorMessage: formErr && formErr.message ? formErr.message : String(formErr)
+              };
+              panel.innerText = 'Form submission failed:\n' + JSON.stringify(info, null, 2) + '\n\n' + (formErr && formErr.stack ? formErr.stack : '');
+            }
+          } catch (e) { console.error('Failed to write debug panel', e); }
+        }
 
-  // ----- INITIALIZE -----
-  loadStateOrInit();
+        // Final UI handling: only show an alert if the final form submission failed.
+        if (formSucceeded) {
+          version++; updateVersion();
+          if (usedFallback) {
+            sendStatus.textContent = 'Sent — preview uploaded inline (fallback)';
+            try { const panel = document.getElementById('debug-panel'); if (panel) { panel.style.display='block'; panel.innerText = (panel.innerText ? panel.innerText + '\n\n' : '') + 'Note: Cloudinary upload failed, fallback used to attach inline preview to submission.'; } } catch (e) {}
+          } else {
+            sendStatus.textContent = 'Sent — thank you!';
+          }
+        } else {
+          sendStatus.textContent = 'Error sending request';
+          // If we used the fallback path, avoid showing a blocking alert that will
+          // confuse the user when the submission actually went through or when
+          // the fallback was the intended behavior during testing. Instead show
+          // a non-modal note in the debug panel and a subtle status message.
+          if (usedFallback) {
+            try { const panel = document.getElementById('debug-panel'); if (panel) { panel.style.display='block'; panel.innerText = (panel.innerText ? panel.innerText + '\n\n' : '') + 'Note: Cloudinary upload failed and fallback was used; form submission reported a problem. Check debug details or your email for confirmation.'; } } catch(e){}
+            sendStatus.textContent = 'Sent (fallback used)';
+          } else {
+            alert('Error sending design request: ' + (cloudinaryError || 'Submission failed'));
+          }
+        }
+      } catch (err) {
+        // This catch only triggers for unrecoverable errors (e.g., Cloudinary failed and fallback disabled)
+        console.error(err);
+        sendStatus.textContent = 'Error sending request';
+        // If fallback was used, prefer a non-modal notification + debug panel instead
+        // of a blocking alert to avoid confusing the user when the order completed.
+        if (usedFallback) {
+          try { const panel = document.getElementById('debug-panel'); if (panel) { panel.style.display='block'; panel.innerText = (panel.innerText ? panel.innerText + '\n\n' : '') + 'Unhandled error occurred but fallback was used: ' + (err && err.message ? err.message : String(err)); } } catch(e){}
+        } else {
+          alert('Error sending design request: ' + (err && err.message ? err.message : String(err)));
+        }
+      } finally {
+        sendBtn.disabled = false; setTimeout(() => { sendStatus.textContent = '\u00A0'; }, 4000);
+      }
+    }
+    if (sendBtn) sendBtn.addEventListener('click', sendDesignRequest);
+
+    // Debug helpers: show canvas/object diagnostics and draw temporary bounding boxes
+    const debugToggle = document.getElementById('debug-toggle');
+    const debugPanel = document.getElementById('debug-panel');
+
+    function getCanvasDiagnostics() {
+      const rect = canvasElement.getBoundingClientRect();
+      return {
+        canvasWidth: canvas.getWidth(),
+        canvasHeight: canvas.getHeight(),
+        clientWidth: rect.width,
+        clientHeight: rect.height,
+        viewportTransform: canvas.viewportTransform ? canvas.viewportTransform.slice() : null,
+        objects: canvas.getObjects().map(o => ({
+          type: o.type || o.constructor.name,
+          left: o.left, top: o.top, width: o.width||o.getScaledWidth?.()||o.getScaledWidth, height: o.height||o.getScaledHeight?.()||o.getScaledHeight,
+          scaleX: o.scaleX, scaleY: o.scaleY, originX: o.originX, originY: o.originY
+        }))
+      };
+    }
+
+    function renderDebugPanel() {
+      const d = getCanvasDiagnostics();
+      let html = '';
+      html += `<div><strong>Canvas (internal):</strong> ${d.canvasWidth} × ${d.canvasHeight}px</div>`;
+      html += `<div><strong>Canvas (DOM):</strong> ${d.clientWidth.toFixed(0)} × ${d.clientHeight.toFixed(0)}px</div>`;
+      html += `<div><strong>ViewportTransform:</strong> ${d.viewportTransform ? d.viewportTransform.map(n=>n.toFixed(3)).join(', ') : 'none'}</div>`;
+      html += `<div style="margin-top:8px;"><strong>Objects (${d.objects.length}):</strong></div>`;
+      d.objects.forEach((o, i) => {
+        html += `<div style="padding:4px 0; border-top:1px solid #eee;"><strong>#${i}</strong> ${o.type} — left:${(o.left==null?'n/a':o.left.toFixed?o.left.toFixed(1):o.left)}, top:${(o.top==null?'n/a':o.top.toFixed?o.top.toFixed(1):o.top)}, w:${o.width||'n/a'}, h:${o.height||'n/a'}, sx:${o.scaleX||1}, sy:${o.scaleY||1}</div>`;
+      });
+      debugPanel.innerHTML = html;
+    }
+
+    function drawDebugBoxes(duration = 3000) {
+      const boxes = [];
+      canvas.getObjects().forEach(obj => {
+        try {
+          const bbox = obj.getBoundingRect(true, true);
+          const rect = new fabric.Rect({ left: bbox.left + bbox.width/2, top: bbox.top + bbox.height/2, originX: 'center', originY: 'center', width: bbox.width, height: bbox.height, fill: 'rgba(0,0,0,0)', stroke: 'red', strokeWidth: 2, selectable:false, evented:false });
+          rect.__debug = true;
+          canvas.add(rect);
+          boxes.push(rect);
+        } catch (e) { console.error('debug box error', e); }
+      });
+      canvas.requestRenderAll();
+      setTimeout(() => { boxes.forEach(b => { canvas.remove(b); }); canvas.requestRenderAll(); }, duration);
+    }
+
+    if (debugToggle) {
+      debugToggle.addEventListener('click', () => {
+        if (debugPanel.style.display === 'none') {
+          renderDebugPanel(); debugPanel.style.display = 'block'; debugToggle.textContent = 'Hide Debug Info'; drawDebugBoxes(5000);
+        } else { debugPanel.style.display = 'none'; debugToggle.textContent = 'Show Debug Info'; }
+      });
+    }
+
+    // Small UI status helper (shows short messages in the sidebar)
+    function showStatus(msg) {
+      try {
+        if (sendStatus) sendStatus.textContent = msg;
+      } catch (e) { console.log('status:', msg); }
+    }
+
+    // Bindings - use safe wiring so missing elements or runtime errors don't silently fail
+    function safeAddListener(el, evt, handler, name) {
+      if (!el) {
+        console.warn('Missing element for listener:', name || evt);
+        return;
+      }
+      el.addEventListener(evt, (e) => {
+        try { handler(e); } catch (err) { console.error('Handler error for', name || evt, err); showStatus('Error: ' + (err && err.message ? err.message : String(err))); }
+      });
+    }
+
+    safeAddListener(signSizeSelect, 'change', (e) => { setSignSize(e.target.value); version++; updateVersion(); }, 'sign-size');
+    safeAddListener(addTextBtn, 'click', () => addText(), 'add-text-btn');
+  safeAddListener(addArcTextBtn, 'click', () => { addArcText(textInput.value); }, 'add-arc-text-btn');
+    safeAddListener(
+      woodTypeSelect,
+      'change',
+      () => {
+        applyWoodBackground();
+        try { updateSizeInfo(); } catch (e) {}
+        // If a wood is selected, remove the placeholder text from finishing/attachment selects
+        try {
+          const woodSelected = !!(woodTypeSelect && woodTypeSelect.value);
+          const finishingSel = document.getElementById('finishing-select');
+          const attachmentSel = document.getElementById('attachment-select');
+          if (finishingSel && finishingSel.options && finishingSel.options.length) {
+            // Keep the visible placeholder text so the select button always shows a label
+            finishingSel.options[0].text = 'Finishing';
+          }
+          if (attachmentSel && attachmentSel.options && attachmentSel.options.length) {
+            // Keep the visible placeholder text so the select button always shows a label
+            attachmentSel.options[0].text = 'Attachment';
+          }
+        } catch (e) {}
+        try { updateFinishingGalleryPrices(); } catch (e) {}
+        try { updateAttachmentGalleryPrices(); } catch (e) {}
+      },
+      'wood-type'
+    );
+    // Highlight ADD TEXT while the user is focused in the text input
+    try {
+      if (textInput) {
+        safeAddListener(textInput, 'focus', () => { try { addTextBtn.classList.add('highlight'); if (addArcTextBtn) addArcTextBtn.classList.add('highlight'); } catch(e){} try { updateRemoveSelectedVisibility(); } catch(e){} }, 'text-input-focus');
+        safeAddListener(textInput, 'blur', () => { try { addTextBtn.classList.remove('highlight'); if (addArcTextBtn) addArcTextBtn.classList.remove('highlight'); } catch(e){} try { updateRemoveSelectedVisibility(); } catch(e){} }, 'text-input-blur');
+      }
+    } catch (e) { console.warn('text input highlight wiring failed', e); }
+    safeAddListener(removeSelectedBtn, 'click', () => {
+      try {
+        const sels = canvas.getActiveObjects ? canvas.getActiveObjects() : (canvas.getActiveObject()? [canvas.getActiveObject()]:[]);
+        if (!sels.length) return;
+        sels.forEach(o=>canvas.remove(o));
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        version++; updateVersion();
+        try { updateRemoveSelectedVisibility(); } catch(e){}
+      } catch (err) { console.error('remove-selected error', err); }
+    }, 'remove-selected-btn');
+    // Sidebar nav buttons
+    safeAddListener(document.getElementById('to-form-btn'), 'click', () => { showFormPanel(); }, 'to-form-btn');
+    safeAddListener(document.getElementById('to-design-btn'), 'click', () => { showDesignPanel(); }, 'to-design-btn');
+    safeAddListener(document, 'keydown', (ev) => { if ((ev.key === 'Delete' || ev.key === 'Backspace')) { const activeEl = document.activeElement; if (!(activeEl && (activeEl.tagName==='INPUT' || activeEl.tagName==='TEXTAREA'))) { const sels = canvas.getActiveObjects ? canvas.getActiveObjects() : (canvas.getActiveObject()? [canvas.getActiveObject()]:[]); if (sels.length) { sels.forEach(o=>canvas.remove(o)); canvas.discardActiveObject(); canvas.requestRenderAll(); version++; updateVersion(); } } } }, 'document-delete');
+    safeAddListener(resetBtn, 'click', () => { if (confirm('Clear the sign and start over?')) { resetCanvas(); version++; updateVersion(); } }, 'reset-btn');
+    safeAddListener(downloadBtn, 'click', () => { if (!canvas.getObjects().length) { alert('Add some text before downloading.'); return; } const dataUrl = canvas.toDataURL({ format:'png', quality:1 }); const link = document.createElement('a'); link.href = dataUrl; link.download = `sign-preview-${currentSizeKey}.png`; document.body.appendChild(link); link.click(); document.body.removeChild(link); }, 'download-btn');
+
+    // Persistence: multi-save list with thumbnails
+    const LOCAL_SAVES_KEY = 'sign_designer_saves_v1';
+    const LEGACY_LOCAL_KEY = 'sign_designer_saved_v1';
+
+    function generateId() { return 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2,8); }
+
+    function loadSavedList() {
+      try {
+        const raw = localStorage.getItem(LOCAL_SAVES_KEY);
+        if (raw) return JSON.parse(raw);
+        // Migration: check legacy single-save key and convert
+        const legacy = localStorage.getItem(LEGACY_LOCAL_KEY);
+        if (legacy) {
+          try {
+            const parsed = JSON.parse(legacy);
+            const entry = { id: generateId(), name: 'Saved design', created: Date.now(), thumbnail: null, payload: parsed };
+            const arr = [entry];
+            localStorage.setItem(LOCAL_SAVES_KEY, JSON.stringify(arr));
+            return arr;
+          } catch (e) { return []; }
+        }
+        return [];
+      } catch (e) { console.warn('loadSavedList error', e); return []; }
+    }
+
+    function saveSavedList(arr) { try { localStorage.setItem(LOCAL_SAVES_KEY, JSON.stringify(arr)); } catch (e) { console.warn('saveSavedList failed', e); } }
+
+    // Attempt to persist the saves list with quota handling. If quota is exceeded,
+    // retry once with thumbnails removed (to reduce size) and inform the user.
+    function persistSavesWithFallback(arr) {
+      try {
+        localStorage.setItem(LOCAL_SAVES_KEY, JSON.stringify(arr));
+        return true;
+      } catch (err) {
+        console.warn('Initial saveSavedList failed (possibly quota):', err);
+        try {
+          // Create a shallow copy and remove thumbnails to reduce size
+          const reduced = arr.map(it => ({ id: it.id, name: it.name, created: it.created, thumbnail: null, payload: it.payload }));
+          localStorage.setItem(LOCAL_SAVES_KEY, JSON.stringify(reduced));
+          try { sendStatus.textContent = 'Saved without thumbnails due to storage limits.'; } catch(e){}
+          return true;
+        } catch (err2) {
+          console.error('persistSavesWithFallback failed', err2);
+          alert('Unable to save design: local storage is full. Consider exporting designs and clearing saved items.');
+          return false;
+        }
+      }
+    }
+
+    function renderSavedList() {
+      try {
+        const container = document.getElementById('saved-list'); if (!container) return;
+        container.innerHTML = '';
+        const list = loadSavedList();
+        if (!list || !list.length) { container.innerHTML = '<div style="color:#666; font-size:13px;">No saved designs</div>'; return; }
+        list.forEach(item => {
+          try {
+            const card = document.createElement('div');
+            card.style.width = '120px';
+            card.style.flex = '0 0 120px';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.alignItems = 'center';
+            card.style.gap = '4px';
+
+            const img = document.createElement('img');
+            // Placeholder SVG shown when a saved thumbnail is missing or broken
+            const PLACEHOLDER_THUMB = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160"><rect fill="%23f5f5f7" width="100%" height="100%"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-family="Arial,Helvetica,sans-serif" font-size="14">No preview</text></svg>';
+            img.src = item.thumbnail || PLACEHOLDER_THUMB;
+            img.onerror = function() { try { img.src = PLACEHOLDER_THUMB; } catch(e){} };
+            img.alt = item.name || '';
+            img.style.width = '120px';
+            img.style.height = 'auto';
+            img.style.objectFit = 'cover';
+            img.style.border = '1px solid rgba(0,0,0,0.08)';
+            img.style.borderRadius = '6px';
+
+            const label = document.createElement('div');
+            label.textContent = item.name || (new Date(item.created).toLocaleString());
+            label.style.fontSize = '12px';
+            label.style.color = '#333';
+            label.style.textAlign = 'center';
+            label.style.maxWidth = '120px';
+            label.style.overflow = 'hidden';
+            label.style.textOverflow = 'ellipsis';
+            label.style.whiteSpace = 'nowrap';
+            // Reduce spacing between the name and the thumbnail
+            label.style.marginBottom = '2px';
+            // Move the label down by 10px to position text lower above the thumbnail
+            label.style.marginTop = '10px';
+
+            const btnRow = document.createElement('div');
+            btnRow.style.display = 'flex'; btnRow.style.gap = '6px';
+
+            const loadBtn = document.createElement('button');
+            loadBtn.setAttribute('aria-label', 'Load saved design');
+            loadBtn.title = 'Load';
+            loadBtn.style.padding = '6px';
+            loadBtn.style.width = '36px';
+            loadBtn.style.height = '28px';
+            loadBtn.style.display = 'inline-flex';
+            loadBtn.style.alignItems = 'center';
+            loadBtn.style.justifyContent = 'center';
+            loadBtn.style.borderRadius = '6px';
+            loadBtn.style.border = '1px solid rgba(0,0,0,0.06)';
+            loadBtn.style.background = '#fff';
+            loadBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+              '<line x1="12" y1="19" x2="12" y2="5" />' +
+              '<polyline points="5 12 12 5 19 12" />' +
+              '</svg>';
+            loadBtn.addEventListener('click', () => {
+              if (!confirm('Load "' + (item.name || 'saved design') + '"? This will replace the current design.')) return;
+              try {
+                // remember the saved name and update label before/after load
+                try { currentSavedName = item.name || ''; updateSizeInfo(); } catch(e){}
+                loadDesignFromObject(item.payload);
+              } catch (e) { console.warn('load saved failed', e); alert('Failed to load saved design.'); }
+            });
+
+            const delBtn = document.createElement('button');
+            delBtn.setAttribute('aria-label', 'Delete saved design');
+            delBtn.title = 'Delete';
+            delBtn.style.padding = '6px';
+            delBtn.style.width = '36px';
+            delBtn.style.height = '28px';
+            delBtn.style.display = 'inline-flex';
+            delBtn.style.alignItems = 'center';
+            delBtn.style.justifyContent = 'center';
+            delBtn.style.borderRadius = '6px';
+            delBtn.style.border = '1px solid rgba(0,0,0,0.06)';
+            delBtn.style.background = '#fff';
+            delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+            delBtn.addEventListener('click', () => { if (!confirm('Delete "' + (item.name || 'saved design') + '"?')) return; deleteSaved(item.id); });
+
+            btnRow.appendChild(loadBtn);
+            btnRow.appendChild(delBtn);
+
+            // Place the label above the thumbnail for clearer hierarchy
+            card.appendChild(label);
+            card.appendChild(img);
+            card.appendChild(btnRow);
+            container.appendChild(card);
+          } catch (inner) { console.warn('renderSavedList item failed', inner); }
+        });
+      } catch (e) { console.warn('renderSavedList failed', e); }
+    }
+
+    function deleteSaved(id) {
+      try {
+        const list = loadSavedList().filter(i => i.id !== id);
+        // Use the safe persistence helper to write back
+        persistSavesWithFallback(list);
+        renderSavedList();
+        try { sendStatus.textContent = 'Deleted saved design.'; } catch(e){}
+      } catch (e) { console.warn('deleteSaved failed', e); }
+    }
+
+    // Create a downscaled thumbnail from the Fabric canvas to limit storage usage.
+    function createThumbnailDataURL(maxWidth = 320) {
+      try {
+        // Try to get a full dataURL from Fabric canvas first
+        let fullDataUrl = null;
+        try { fullDataUrl = canvas.toDataURL('image/png'); } catch (e) { fullDataUrl = null; }
+        if (!fullDataUrl) return null;
+
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = function() {
+            try {
+              const ratio = img.width && img.height ? (img.height / img.width) : 1;
+              const w = Math.min(maxWidth, img.width || maxWidth);
+              const h = Math.max(1, Math.round(w * ratio));
+              const tmp = document.createElement('canvas');
+              tmp.width = w;
+              tmp.height = h;
+              const ctx = tmp.getContext('2d');
+              ctx.drawImage(img, 0, 0, w, h);
+              const thumb = tmp.toDataURL('image/png');
+              resolve(thumb);
+            } catch (err) { console.warn('createThumbnail draw failed', err); resolve(null); }
+          };
+          img.onerror = function() { resolve(null); };
+          img.src = fullDataUrl;
+        });
+      } catch (e) { console.warn('createThumbnailDataURL failed', e); return Promise.resolve(null); }
+    }
+
+    async function saveDesignAsNamed() {
+      try {
+        // Prefill prompt with existing saved name when available
+        const name = prompt('Name this design (optional):', (typeof currentSavedName === 'string' && currentSavedName) ? currentSavedName : ('Design ' + new Date().toLocaleString()));
+        if (name === null) return; // user cancelled
+        const payload = { meta: { sizeKey: currentSizeKey, wood: (woodTypeSelect && woodTypeSelect.value) ? woodTypeSelect.value : '', version, name }, canvas: canvas.toJSON(['selectable']) };
+        let thumb = null;
+        try { thumb = await createThumbnailDataURL(320); } catch (e) { console.warn('thumbnail generation failed', e); thumb = null; }
+        const list = loadSavedList();
+        const entry = { id: generateId(), name: name || ('Design ' + new Date().toLocaleString()), created: Date.now(), thumbnail: thumb, payload };
+        list.unshift(entry);
+        // keep at most 100 saves to avoid extreme localStorage bloat
+        if (list.length > 100) list.length = 100;
+        // Persist with fallback that strips thumbnails on quota errors
+        const ok = persistSavesWithFallback(list);
+        if (ok) {
+          renderSavedList();
+          try { currentSavedName = (name || ('Design ' + new Date().toLocaleString())); updateSizeInfo(); } catch (e) {}
+          try { sendStatus.textContent = 'Design saved.'; } catch(e){}
+        }
+      } catch (e) { console.error('saveDesignAsNamed failed', e); alert('Failed to save design.'); }
+    }
+
+    function exportDesignToFile() {
+      try {
+        const payload = { meta: { sizeKey: currentSizeKey, wood: (woodTypeSelect && woodTypeSelect.value) ? woodTypeSelect.value : '', version }, canvas: canvas.toJSON(['selectable']) };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sign-design-${currentSizeKey || 'design'}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        try { sendStatus.textContent = 'Export ready.'; } catch(e){}
+      } catch (e) { console.error('exportDesignToFile failed', e); alert('Failed to export design.'); }
+    }
+
+    // Load a design payload or raw Fabric JSON into the canvas
+    function loadDesignFromObject(obj) {
+      try {
+        if (!obj) { alert('No design data provided.'); return; }
+        let canvasJson = null;
+        let meta = null;
+        // Our saved entries store { meta, canvas }
+        if (obj.canvas && obj.meta) {
+          canvasJson = obj.canvas;
+          meta = obj.meta;
+        } else if (obj.objects || obj.version || obj.background || obj.backgroundImage) {
+          // Likely a raw Fabric canvas JSON
+          canvasJson = obj;
+        } else {
+          alert('Invalid design data.');
+          return;
+        }
+
+        // If meta includes size/wood, apply them first so the canvas dimensions
+        // and background are in-place when objects are restored.
+        try {
+          if (meta && meta.sizeKey) {
+            try { setSignSize(meta.sizeKey); } catch (e) { console.warn('Failed to set size from meta', e); }
+          }
+          if (meta && meta.wood) {
+            try { if (woodTypeSelect) woodTypeSelect.value = meta.wood; } catch(e){}
+            try { applyWoodBackground(); } catch(e){}
+          } else {
+            try { applyWoodBackground(); } catch(e){}
+          }
+          // If the saved payload includes a name, remember it so we can show it in the artboard label
+          try {
+            if (meta && meta.name) { currentSavedName = meta.name; updateSizeInfo(); }
+          } catch (e) {}
+        } catch (e) { console.warn('Failed to apply meta before load', e); }
+
+        try { canvas.clear(); } catch (e) { console.warn('Failed to clear canvas before load', e); }
+
+        // Use Fabric's loader which will asynchronously load images.
+        // Load after canvas size/background are set so object positions match.
+        canvas.loadFromJSON(canvasJson, function() {
+          try {
+            normalizeObjects();
+            canvas.renderAll();
+            version++; updateVersion();
+            try { updateRemoveSelectedVisibility(); } catch (e) {}
+            try { sendStatus.textContent = 'Design loaded.'; } catch (e) {}
+          } catch (inner) { console.warn('loadFromJSON callback failed', inner); }
+        }, function(o, object) {
+          // optional per-object reviver (noop)
+        });
+      } catch (e) {
+        console.error('loadDesignFromObject failed', e);
+        alert('Failed to load design.');
+      }
+    }
+
+    function loadDesignFromLocalOrPrompt() {
+      try {
+        const list = loadSavedList();
+        if (list && list.length) {
+          // If we have saves, show a simple chooser: renderSavedList already visible
+          // Prompt user to pick from the thumbnails; nothing else to do here.
+          if (confirm('Load saved designs are shown below. Click Load on the item you want to restore.\nOpen the saved-list to choose now.')) return;
+        }
+        // If no local save, open file picker
+        const imp = document.getElementById('import-design-file');
+        if (imp) imp.click(); else alert('No saved design found. Use Export to import a file.');
+      } catch (e) { console.error('loadDesignFromLocalOrPrompt failed', e); alert('Failed to load saved design.'); }
+    }
+
+    // Wire buttons
+    if (saveDesignBtn) safeAddListener(saveDesignBtn, 'click', () => { saveDesignAsNamed(); }, 'save-design-btn');
+    if (exportDesignBtn) safeAddListener(exportDesignBtn, 'click', () => { exportDesignToFile(); }, 'export-design-btn');
+    if (loadDesignBtn) safeAddListener(loadDesignBtn, 'click', () => { loadDesignFromLocalOrPrompt(); }, 'load-design-btn');
+    // Share current design: upload the canvas preview and copy a shareable URL
+    const shareDesignBtn = document.getElementById('share-design-btn');
+    async function shareDesign() {
+      try {
+        if (!canvas || !canvas.getObjects().length) { alert('Add some content before sharing.'); return; }
+        try { sendStatus.textContent = 'Preparing share...'; } catch(e){}
+        const dataUrl = canvas.toDataURL({ format: 'png', quality: 1 });
+        let url = null;
+        try {
+          url = await uploadPreviewImage(dataUrl);
+        } catch (err) {
+          console.warn('Share upload failed', err);
+          alert('Upload failed: ' + (err && err.message ? err.message : String(err)) + '\nYou can Export the design and share the file manually.');
+          try { sendStatus.textContent = '\u00A0'; } catch(e){}
+          return;
+        }
+
+        // Try to copy to clipboard
+        try {
+          if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+            alert('Share URL copied to clipboard:\n' + url);
+          } else {
+            prompt('Share URL (copy):', url);
+          }
+        } catch (e) {
+          try { prompt('Share URL (copy):', url); } catch (p) { /* ignore */ }
+        }
+
+        // Offer quick social share (Twitter)
+        try {
+          if (confirm('Open Twitter to share this design?')) {
+            const text = encodeURIComponent('Check out my sign design');
+            const tw = 'https://twitter.com/intent/tweet?text=' + text + '&url=' + encodeURIComponent(url);
+            window.open(tw, '_blank');
+          }
+        } catch (e) { console.warn('twitter share failed', e); }
+
+        try { sendStatus.textContent = 'Shared — URL copied to clipboard.'; } catch(e){}
+      } catch (e) { console.error('shareDesign error', e); alert('Failed to share design.'); }
+    }
+    if (shareDesignBtn) safeAddListener(shareDesignBtn, 'click', () => { shareDesign(); }, 'share-design-btn');
+
+    // Render saved list on init
+    try { renderSavedList(); } catch (e) { console.warn('initial renderSavedList failed', e); }
+
+  // Init
+  // Ensure native selects reflect the desired defaults (size + wood)
+  try {
+    if (signSizeSelect) signSizeSelect.value = currentSizeKey || '24x12';
+  } catch (e) {}
+  try {
+    if (woodTypeSelect) woodTypeSelect.value = 'cedar';
+  } catch (e) {}
+
+  // Apply initial canvas and UI state
+  resetCanvas(); setSignSize(currentSizeKey); updateVersion(); try { updateSizeInfo(); } catch (e) {}
+  // Trigger change handlers so galleries/select placeholders update accordingly
+  try { if (signSizeSelect) signSizeSelect.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+  try { if (woodTypeSelect) woodTypeSelect.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+  try { updateRemoveSelectedVisibility(); } catch (e) {}
+  // Show design panel by default
+  try { showDesignPanel(); } catch (e) {}
+  // Ensure controls align to canvas width and keep in sync on resize
+  try { syncArtboardControlsWidth(); } catch (e) {}
+  window.addEventListener('resize', () => { try { syncArtboardControlsWidth(); } catch (e) {} });
+  try { if (fontSelect) fontSelect.style.fontFamily = fontSelect.value; } catch (err) {}
+  try { if (colorSelect) { updateColorSelectUI(colorSelect.value || '#000000'); } } catch (err) {}
+
+  // Load pricing from Google Sheet
+  try {
+    fetchPricingFromSheet();
+  } catch (e) {
+    console.warn('Failed to start pricing fetch', e);
+  }
   </script>
-
 </body>
 </html>
-
