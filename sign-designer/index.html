@@ -35,7 +35,7 @@
   }
   .canvas-label { text-align:center; font-size:12px; color:#666; margin-top:10px; }
     .version-row { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
-    .thumb { width:56px; height:56px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.06); cursor:pointer; display:flex; align-items:center; justify-content:center; background:#fff; }
+    .thumb { width:56px; height:56px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.06); cursor:pointer; display:flex; align-items:center; justify-content:center; background:#fff; flex: 0 0 auto; }
     /* Default styling for remove button when inactive */
     #remove-selected-btn { background: #fff; color: #000; }
     /* Highlight state for the Add Image button when an image is selected */
@@ -105,6 +105,22 @@
     .wood-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
     .wood-thumb-label { position:absolute; left:8px; right:8px; bottom:8px; background:rgba(0,0,0,0.45); color:#fff; padding:6px 8px; border-radius:6px; font-weight:700; font-size:13px; text-align:center; pointer-events:none; }
   </style>
+    <style>
+      /* Warning / 1/16" example */
+      /* Use a subtle outline and slate-gray text to reduce visual distraction */
+      #preview-warning { background:transparent; border:1px solid rgba(0,0,0,0.08); color:#475569; padding:10px 12px; border-radius:8px; margin-top:12px; display:flex; gap:12px; align-items:center; font-size:13px; }
+      #preview-warning strong { margin-right:6px; }
+      .preview-warning-inner { display:flex; flex-direction:column; gap:2px; }
+      .ruler-row { display:flex; align-items:center; gap:10px; }
+      .ruler-label { font-size:12px; color:#475569; font-weight:700; }
+      /* Outer dashed track (container) */
+      .ruler-track { height:28px; background:transparent; border:1px dashed rgba(0,0,0,0.08); border-radius:8px; display:flex; align-items:center; padding:6px; min-width:56px; max-width:360px; }
+      /* White area representing 1" (smaller capsule centered vertically) */
+      .ruler-oneinch { background:#ffffff; height:18px; border-radius:8px; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.04); display:flex; align-items:center; justify-content:center; padding:0 8px; }
+      /* Bright green bar representing ~1/16" (centered inside white capsule) */
+      .ruler-bar { height:10px; width:6px; background:#1DB954; border-radius:3px; box-shadow: 0 0 6px rgba(29,185,84,0.25); }
+      .ruler-note { font-size:11px; color:#475569; }
+    </style>
   <style>
     /* Make options inside the TEXT COLOR dropdown bold so the color samples stand out */
     /* Apply bold to the select and its options with higher specificity
@@ -214,19 +230,29 @@
 
             <div style="height:2px; background:rgba(0,0,0,0.06); margin:8px 0;"></div>
 
-            <div class="panel-title">ARTWORK</div>
-            <div id="image-gallery" style="display:flex; gap:8px; margin-top:6px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div class="panel-title">ARTWORK</div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input id="upload-image" type="file" accept="image/*" style="display:none;" />
+                <label for="upload-image" aria-label="Upload image" role="button" tabindex="0" style="flex:initial; width:36px; height:36px; text-align:center; padding:6px; background:#fff; border:1px solid rgba(0,0,0,0.08); border-radius:8px; cursor:pointer; font-size:13px; display:inline-flex; align-items:center; justify-content:center; gap:0;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 5 17 10" />
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                  </svg>
+                  <span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Upload</span>
+                </label>
+              </div>
+            </div>
+            <div id="image-gallery" style="display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px; margin-top:6px;">
               <div class="thumb" data-src="images/divider_cup.png"><img src="images/divider_cup.png" alt="divider" style="max-width:100%; max-height:100%;"/></div>
               <div class="thumb" data-src="images/object_frosty.png"><img src="images/object_frosty.png" alt="frosty" style="max-width:100%; max-height:100%;"/></div>
               <div class="thumb" data-src="images/object_tree.png"><img src="images/object_tree.png" alt="tree" style="max-width:100%; max-height:100%;"/></div>
+              
+              <!-- Floating add button placement helper (script will position/show it) -->
             </div>
-            <div style="display:flex; gap:8px; margin-top:6px; align-items:center;">
-              <input id="upload-image" type="file" accept="image/*" style="display:none;" />
-              <label for="upload-image" style="flex:initial; width:120px; text-align:center; padding:6px 10px; background:#fff; border:1px solid rgba(0,0,0,0.08); border-radius:8px; cursor:pointer; font-size:13px;">UPLOAD</label>
-            </div>
-            <div style="margin-top:8px;">
-              <button id="add-image-btn" type="button" style="width:100%; padding:12px; font-weight:700;">ADD IMAGE</button>
-            </div>
+            <!-- Floating Add Image button (hidden until a thumbnail is selected) -->
+            <button id="add-image-btn" type="button" style="position:fixed; padding:8px 12px; font-weight:700; display:none; width:120px; z-index:9999;">ADD IMAGE</button>
           </div>
         </div>
 
@@ -355,7 +381,25 @@
             </div>
           </div>
 
-          <div id="saved-area" style="margin-top:60px; display:flex; flex-direction:column; align-items:flex-start; gap:8px; width:100%; overflow-x:hidden;">
+          <!-- Preview warning: scale guidance -->
+          <div id="preview-warning" role="note" aria-live="polite" style="margin-top:40px;">
+              <div class="preview-warning-inner">
+                <div style="font-size:13px; color:#475569;"><strong>ATTENTION:</strong> Any details smaller than the green bar (1/16") may not be visible.</div>
+              <div class="ruler-row" style="margin-top:2px; align-items:center; justify-content:center; width:100%;">
+                <div style="display:inline-flex; align-items:center; gap:10px;">
+                  <div class="ruler-label">Smallest Detail:</div>
+                  <div id="ruler-track" class="ruler-track" aria-hidden="true">
+                    <div id="ruler-oneinch" class="ruler-oneinch" aria-hidden="true">
+                      <div id="ruler-example" class="ruler-bar" style="width:2px"></div>
+                    </div>
+                  </div>
+                  <div id="ruler-caption" style="font-size:13px; color:#475569; display:flex; align-items:center; margin-left:8px; font-style:italic;">Approximately scaled to match your artboard</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="saved-area" style="margin-top:8px; display:flex; flex-direction:column; align-items:flex-start; gap:8px; width:100%; overflow-x:hidden;">
             <div id="saved-header" style="font-weight:700; font-size:13px; color:#333; margin-bottom:6px;">Saved Signs</div>
             <div id="saved-list" style="display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap; align-content:flex-start; max-width:100%;"></div>
           </div>
@@ -926,6 +970,9 @@
       try { updateFinishingGalleryPrices(); } catch (e) {}
       try { updateAttachmentGalleryPrices(); } catch (e) {}
 
+      // refresh the preview warning example that visualizes 1/16" at current preview display
+      try { if (typeof updateWarningExample === 'function') updateWarningExample(); } catch (e) {}
+
       // highlight size thumbnail when sign size changes
       try {
         if (sizeGallery) {
@@ -996,6 +1043,58 @@
       } catch (e) { console.error('applyWoodBackground error', e); }
     }
 
+      // Update the on-screen example that shows 1" (white) and ~1/16" (dark) at the current preview scale
+      function updateWarningExample() {
+        try {
+          const bar = document.getElementById('ruler-example');
+          const oneInchEl = document.getElementById('ruler-oneinch');
+          const track = document.getElementById('ruler-track');
+          if (!bar || !oneInchEl || !track) return;
+
+          // Bitmap pixels that represent 1/16" and 1" in the preview scale
+          const oneSixteenthInPx = PX_PER_INCH * (1 / 16);
+          const oneInchInPx = PX_PER_INCH;
+
+          // Determine displayed (CSS) size of the canvas so we can show the ruler relative to the preview
+          const rect = canvasElement.getBoundingClientRect();
+          const displayW = rect.width || canvasElement.clientWidth || parseFloat(canvasElement.style.width) || canvasElement.width || 0;
+          const bitmapW = canvas.getWidth() || canvasElement.width || 1;
+          const cssScale = (bitmapW > 0) ? (displayW / bitmapW) : 1;
+
+          // Compute CSS pixels to draw for a 1" white area and a 1/16" green bar inside it
+          const cssOneInchBase = Math.max(16, Math.min(280, Math.round(oneInchInPx * cssScale)));
+          const cssOneSixteenthBase = Math.max(1, Math.round(oneSixteenthInPx * cssScale));
+
+          // Increase the white area by 1/3 (user requested +33%)
+          const cssOneInch = Math.round(cssOneInchBase * 1.3333333);
+          // Start from the computed base (with a small +1px nudged for visibility)
+          let cssOneSixteenth = cssOneSixteenthBase + 1;
+
+          // Explicit per-size green-bar widths (user-specified values)
+          try {
+            if (typeof currentSizeKey !== 'undefined') {
+              if (currentSizeKey === '36x18') {
+                cssOneSixteenth = 2; // 2px for 36x18
+              } else if (currentSizeKey === '24x12') {
+                cssOneSixteenth = 2.5; // 2.5px (subpixel allowed) or use 3px if you'd prefer
+              } else if (currentSizeKey === '18x9') {
+                cssOneSixteenth = 3; // 3px for 18x9
+              } else if (currentSizeKey === '12x6') {
+                cssOneSixteenth = 4; // 4px for 12x6
+              }
+            }
+          } catch (e) { /* ignore */ }
+
+          // Set the white 1" area width and center the green bar inside it
+          oneInchEl.style.width = cssOneInch + 'px';
+          bar.style.width = cssOneSixteenth + 'px';
+
+          // Outer track width includes padding around the white area
+          const outerPad = 12; // px padding (approx)
+          track.style.width = (cssOneInch + outerPad) + 'px';
+        } catch (e) { /* silent fail */ }
+      }
+
     function resetCanvas() { canvas.clear(); applyWoodBackground(); canvas.renderAll(); try { currentSavedName = ''; updateSizeInfo(); } catch(e){} }
 
     // (removed: updateCanvasLabel) — use updateSizeInfo() to show size/px and saved name in the existing UI
@@ -1022,6 +1121,14 @@
         } catch (e) {}
       } catch (e) { console.warn('syncArtboardControlsWidth failed', e); }
     }
+
+    // Ensure the sample ruler updates on window resize (display size may change)
+    try { window.addEventListener('resize', function(){ try { updateWarningExample(); syncArtboardControlsWidth(); } catch(e){} }); } catch(e){}
+
+    // Update the ruler once DOM and canvas finish initializing
+    try { document.addEventListener('DOMContentLoaded', function(){ try { updateWarningExample(); } catch(e){} }); } catch(e){}
+    // Also update the warning example whenever the canvas is rendered/resized
+    try { canvas.on && canvas.on('after:render', function(){ try { updateWarningExample(); } catch(e){} }); } catch(e){}
 
     // Show/hide and highlight the Remove Selected button based on canvas selection
     function updateRemoveSelectedVisibility() {
@@ -1192,6 +1299,24 @@
           img.scaleX = img.scaleY = scale;
         }
         canvas.add(img);
+        try {
+          // Place the newly added image above all other image objects
+          const objs = canvas.getObjects() || [];
+          // Find the highest index of existing image objects (excluding the new one)
+          let maxImageIndex = -1;
+          for (let i = 0; i < objs.length; i++) {
+            const o = objs[i];
+            if (o === img) continue;
+            if (o && o.type === 'image') maxImageIndex = i;
+          }
+          // If there are image objects, move this image to just above them,
+          // otherwise bring to front normally.
+          if (maxImageIndex >= 0) {
+            try { canvas.moveTo(img, maxImageIndex + 1); } catch(e) { canvas.bringToFront(img); }
+          } else {
+            try { canvas.bringToFront(img); } catch(e) {}
+          }
+        } catch(e) { /* ignore ordering errors */ }
         canvas.setActiveObject(img);
         // Normalize to ensure visuals appear on screen
         normalizeObjects();
@@ -1411,7 +1536,35 @@
           imageGallery.querySelectorAll('.thumb').forEach(t => t.style.outline = '');
           el.style.outline = '3px solid rgba(0,122,255,0.8)';
           selectedImageSrc = src;
-          try { if (addImageBtn) addImageBtn.classList.add('highlight'); } catch(e){}
+          try {
+            if (addImageBtn) {
+              addImageBtn.classList.add('highlight');
+                // Position the floating add button to the right of the sidebar
+              try {
+                const thumbRect = el.getBoundingClientRect();
+                const btn = addImageBtn;
+                // Ensure button is visible so offsetHeight is readable
+                btn.style.display = 'inline-flex';
+                btn.style.position = 'fixed';
+                btn.style.zIndex = 9999;
+                // Lock a fixed width so it doesn't stretch across the viewport
+                btn.style.width = '120px';
+                // Find the sidebar right edge and place the button just to its right
+                const sidebarEl = document.querySelector('.sidebar');
+                let left = Math.round(thumbRect.right + 8);
+                if (sidebarEl) {
+                  try {
+                    const sideRect = sidebarEl.getBoundingClientRect();
+                    left = Math.round(sideRect.right + 12);
+                  } catch (e) {}
+                }
+                // Vertically center the button alongside the clicked thumbnail
+                const top = Math.round(thumbRect.top + (thumbRect.height - btn.offsetHeight) / 2);
+                btn.style.left = left + 'px';
+                btn.style.top = top + 'px';
+              } catch (posErr) { /* ignore positioning errors */ }
+            }
+          } catch(e){}
           try { updateRemoveSelectedVisibility(); } catch (e) {}
         } catch (err) { console.warn('thumb click failed', err); }
       });
@@ -1670,16 +1823,42 @@
             // clear selection UI
             selectedImageSrc = null;
             try { Array.from(imageGallery.querySelectorAll('.thumb')).forEach(t => t.style.outline = ''); } catch(e){}
-            try { if (addImageBtn) addImageBtn.classList.remove('highlight'); } catch(e){}
+            try {
+              if (addImageBtn) {
+                addImageBtn.classList.remove('highlight');
+                addImageBtn.style.display = 'none';
+                addImageBtn.style.left = '';
+                addImageBtn.style.top = '';
+                addImageBtn.style.position = '';
+              }
+            } catch(e){}
             try { updateRemoveSelectedVisibility(); } catch (e) {}
           }
         } catch (e) { /* ignore image-clear errors */ }
 
       } catch (e) { /* ignore */ }
     }, 'galleries-outside');
-    function createThumb(src) { const el = document.createElement('div'); el.className='thumb'; el.setAttribute('data-src', src); const img=document.createElement('img'); img.src=src; img.style.maxWidth='100%'; img.style.maxHeight='100%'; el.appendChild(img); imageGallery.appendChild(el); attachThumbHandlers(el); el.click(); return el; }
+    function createThumb(src) { 
+      const el = document.createElement('div');
+      el.className='thumb';
+      el.setAttribute('data-src', src);
+      const img=document.createElement('img');
+      img.src=src; img.style.maxWidth='100%'; img.style.maxHeight='100%';
+      el.appendChild(img);
+      // Insert the new thumbnail at the start so uploaded images appear first
+      try {
+        if (imageGallery && imageGallery.firstChild) imageGallery.insertBefore(el, imageGallery.firstChild);
+        else if (imageGallery) imageGallery.appendChild(el);
+      } catch (e) {
+        try { imageGallery.appendChild(el); } catch (ee) {}
+      }
+      attachThumbHandlers(el);
+      // Simulate click so selection/highlight behavior runs for the new thumb
+      el.click();
+      return el; 
+    }
     // wire upload input safely
-    if (uploadInput) safeAddListener(uploadInput, 'change', (ev) => { const files = Array.from(ev.target.files||[]); files.forEach(file => { if (!file.type.startsWith('image/')) return; const reader = new FileReader(); reader.onload = (e) => createThumb(e.target.result); reader.readAsDataURL(file); }); uploadInput.value = ''; }, 'upload-input');
+    if (uploadInput) safeAddListener(uploadInput, 'change', (ev) => { const files = Array.from(ev.target.files||[]); files.forEach(file => { if (!file.type.startsWith('image/')) return; const reader = new FileReader(); reader.onload = (e) => { try { createThumb(e.target.result); try { addImageBySrc(e.target.result); } catch(err) {} } catch(inner){} }; reader.readAsDataURL(file); }); uploadInput.value = ''; }, 'upload-input');
 
     // wire add image safely
     safeAddListener(addImageBtn, 'click', () => {
@@ -1692,7 +1871,15 @@
         addImageBySrc(src);
         // clear selection highlight after adding
         try { selectedImageSrc = null; Array.from(imageGallery.querySelectorAll('.thumb')).forEach(t => t.style.outline = ''); } catch(e){}
-        try { if (addImageBtn) addImageBtn.classList.remove('highlight'); } catch(e){}
+        try {
+          if (addImageBtn) {
+            addImageBtn.classList.remove('highlight');
+            addImageBtn.style.display = 'none';
+            addImageBtn.style.left = '';
+            addImageBtn.style.top = '';
+            addImageBtn.style.position = '';
+          }
+        } catch(e){}
         try { updateRemoveSelectedVisibility(); } catch (e) {}
       } else alert('Select an image thumbnail first or upload one using UPLOAD IMAGE.');
     }, 'add-image-btn');
@@ -2446,6 +2633,132 @@
   } catch (e) {
     console.warn('Failed to start pricing fetch', e);
   }
+  </script>
+  <!-- Orientation hint: show on mobile when in portrait to suggest rotating to landscape -->
+  <style>
+    @media (prefers-reduced-motion: reduce) {
+      .orientation-phone { animation: none !important; }
+    }
+    #orientation-popup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    #orientation-popup-overlay.show { display: flex; }
+    .orientation-dialog {
+      background: #fff;
+      padding: 18px 18px 14px 18px;
+      border-radius: 12px;
+      max-width: 320px;
+      width: calc(100% - 48px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      text-align: center;
+      color: #111;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    .orientation-phone {
+      width: 72px;
+      height: 72px;
+      margin: 4px auto 8px auto;
+      display:inline-block;
+      transform-origin: 50% 50%;
+      animation: nudge 1200ms ease-in-out infinite;
+    }
+    @keyframes nudge {
+      0% { transform: rotate(0deg); }
+      25% { transform: rotate(8deg); }
+      50% { transform: rotate(0deg); }
+      75% { transform: rotate(-8deg); }
+      100% { transform: rotate(0deg); }
+    }
+    .orientation-title { font-weight:700; margin-bottom:6px; }
+    .orientation-desc { font-size:13px; color:#555; margin-bottom:12px; }
+    .orientation-actions { display:flex; gap:8px; justify-content:center; }
+    .orientation-actions button { padding:8px 12px; border-radius:8px; border:1px solid rgba(0,0,0,0.08); background:#fff; cursor:pointer; }
+    .orientation-actions button.primary { background: linear-gradient(#007AFF,#005FCC); color:#fff; border:none; }
+  </style>
+
+  <div id="orientation-popup-overlay" role="dialog" aria-live="polite" aria-label="Rotate device suggestion">
+    <div class="orientation-dialog" role="document">
+      <div class="orientation-phone" aria-hidden="true">
+        <!-- simple phone + rotate arrow SVG -->
+        <svg viewBox="0 0 64 64" width="72" height="72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="18" y="8" width="28" height="48" rx="4" stroke="#111" stroke-width="2" fill="#f7f7fb" />
+          <circle cx="32" cy="46" r="2" fill="#111" />
+          <path d="M40 20c-1.8-4.6-6-8-11-8-6.6 0-12 5.4-12 12" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M27 12l-2 4 4-2" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </div>
+      <div class="orientation-title">Rotate for best experience</div>
+      <div class="orientation-desc">This app works best in landscape. Please rotate your device.</div>
+      <div class="orientation-actions">
+        <button id="orientation-dismiss">Got it</button>
+        <button id="orientation-never" class="primary">Don't show again</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      // Only show on mobile-like devices when portrait orientation detected
+      function isMobileLike() {
+        try {
+          const ua = navigator.userAgent || '';
+          const smallScreen = Math.max(window.screen.width, window.screen.height) <= 960;
+          const touch = ('ontouchstart' in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || (window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
+          const mobileUA = /Mobi|Android|iPhone|iPod|iPad|IEMobile|Windows Phone/i.test(ua);
+          return (mobileUA || (touch && smallScreen));
+        } catch (e) { return false; }
+      }
+
+      const overlay = document.getElementById('orientation-popup-overlay');
+      const btnDismiss = document.getElementById('orientation-dismiss');
+      const btnNever = document.getElementById('orientation-never');
+      const STORAGE_KEY = 'orientation-popup-dismissed-v1';
+
+      function isPortrait() {
+        try {
+          if (window.matchMedia) return window.matchMedia('(orientation: portrait)').matches;
+          return window.innerHeight > window.innerWidth;
+        } catch (e) { return window.innerHeight > window.innerWidth; }
+      }
+
+      function showOverlay() {
+        try {
+          if (!overlay) return;
+          overlay.classList.add('show');
+        } catch (e) {}
+      }
+      function hideOverlay() {
+        try { if (!overlay) return; overlay.classList.remove('show'); } catch (e) {}
+      }
+
+      function checkAndToggle() {
+        try {
+          if (!isMobileLike()) { hideOverlay(); return; }
+          if (sessionStorage.getItem(STORAGE_KEY) === 'never') { hideOverlay(); return; }
+          if (isPortrait()) showOverlay(); else hideOverlay();
+        } catch (e) { /* ignore */ }
+      }
+
+      // Debounce helper
+      function debounce(fn, wait){ let t; return function(){ clearTimeout(t); t=setTimeout(()=>fn.apply(this, arguments), wait); }; }
+
+      // Wire buttons
+      if (btnDismiss) btnDismiss.addEventListener('click', function(){ try { hideOverlay(); sessionStorage.setItem(STORAGE_KEY, 'dismissed'); } catch (e) {} });
+      if (btnNever) btnNever.addEventListener('click', function(){ try { hideOverlay(); sessionStorage.setItem(STORAGE_KEY, 'never'); } catch (e) {} });
+
+      // Listen for orientation changes and resize
+      try { window.addEventListener('orientationchange', debounce(checkAndToggle, 150)); } catch (e) {}
+      try { window.addEventListener('resize', debounce(checkAndToggle, 150)); } catch (e) {}
+
+      // Initial check on DOM ready
+      try { document.addEventListener('DOMContentLoaded', checkAndToggle); } catch (e) { checkAndToggle(); }
+    })();
   </script>
 </body>
 </html>
