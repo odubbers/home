@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#12332A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CaribooDash">
 <title>Cariboo Dash — Customer App Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -49,10 +54,18 @@ body{
   width:100%;height:100%;border-radius:36px;overflow:hidden;
   background:var(--snow);position:relative;display:flex;flex-direction:column;
 }
+*{-webkit-tap-highlight-color:transparent}
+button{touch-action:manipulation}
 @media(max-width:520px){
-  body{padding:0}
-  .phone{width:100%;height:100vh;max-height:100vh;border-radius:0;padding:0;box-shadow:none}
-  .screen{border-radius:0}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none;position:fixed;inset:0;width:100%}
+  body{padding:0;display:block;background:var(--snow)}
+  .stage{display:block;max-width:none;width:100%;height:100%}
+  .phone{width:100%;height:100%;height:100dvh;max-height:none;border-radius:0;padding:0;box-shadow:none;background:var(--snow)}
+  .screen{border-radius:0;height:100%}
+  .statusbar{display:none}
+  .appbar{padding-top:calc(12px + env(safe-area-inset-top))}
+  .push{top:calc(8px + env(safe-area-inset-top))}
+  .confirm{border-radius:0}
 }
 
 /* Status bar */
