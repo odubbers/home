@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cariboo Dash — Customer App Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pine:#1E4D3B; --pine-deep:#12332A; --pine-soft:#2E6B52;
+  --cheddar:#FFB020; --cheddar-deep:#E89400;
+  --berry:#E4572E;
+  --snow:#F6F4EE; --card:#FFFFFF; --ink:#1A2420; --ink-soft:#5C6B63;
+  --line:#E7E3D8;
+  --cold:#2D7FF9;
+  --radius:18px;
+  --shadow:0 4px 18px rgba(18,51,42,.10);
+  --font-display:"Bricolage Grotesque", sans-serif;
+  --font-body:"Inter", system-ui, sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:var(--font-body); color:var(--ink);
+  background:var(--pine-deep);
+  background-image:radial-gradient(ellipse at 20% 0%, #1E4D3B 0%, #12332A 60%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.02) 0 2px, transparent 2px 14px);
+  min-height:100vh;
+  display:flex; align-items:center; justify-content:center;
+  padding:32px 16px;
+}
+.stage{display:flex;gap:48px;align-items:center;max-width:1100px}
+.stage-note{color:#CBD9CF;max-width:280px;display:none}
+.stage-note h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.1;color:#fff;margin-bottom:12px}
+.stage-note h1 span{color:var(--cheddar)}
+.stage-note p{font-size:14px;line-height:1.6;margin-bottom:10px}
+.stage-note .tag{display:inline-block;background:rgba(255,176,32,.15);color:var(--cheddar);border:1px solid rgba(255,176,32,.4);padding:4px 10px;border-radius:99px;font-size:12px;font-weight:600;margin-bottom:14px}
+@media(min-width:900px){.stage-note{display:block}}
+
+/* Phone frame */
+.phone{
+  width:400px;max-width:100%;height:820px;max-height:92vh;
+  background:#000;border-radius:44px;padding:10px;
+  box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 0 0 2px #333;
+  position:relative;flex-shrink:0;
+}
+.screen{
+  width:100%;height:100%;border-radius:36px;overflow:hidden;
+  background:var(--snow);position:relative;display:flex;flex-direction:column;
+}
+@media(max-width:520px){
+  body{padding:0}
+  .phone{width:100%;height:100vh;max-height:100vh;border-radius:0;padding:0;box-shadow:none}
+  .screen{border-radius:0}
+}
+
+/* Status bar */
+.statusbar{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:12px;font-weight:600;color:var(--ink);flex-shrink:0}
+
+/* Push notification */
+.push{
+  position:absolute;top:10px;left:10px;right:10px;z-index:60;
+  background:var(--pine-deep);color:#fff;border-radius:16px;padding:12px 14px;
+  box-shadow:0 12px 30px rgba(0,0,0,.35);
+  display:flex;gap:10px;align-items:flex-start;
+  transform:translateY(-130%);transition:transform .5s cubic-bezier(.2,.9,.3,1.1);
+  cursor:pointer;
+}
+.push.show{transform:translateY(0)}
+.push .emoji{font-size:22px}
+.push b{color:var(--cheddar);font-size:13px;display:block;margin-bottom:2px}
+.push p{font-size:12px;line-height:1.4;color:#DCE7E0}
+
+/* Header */
+.appbar{padding:8px 18px 12px;flex-shrink:0}
+.appbar .brandrow{display:flex;justify-content:space-between;align-items:center}
+.brand{font-family:var(--font-display);font-weight:800;font-size:22px;color:var(--pine);letter-spacing:-.02em}
+.brand .dash{color:var(--cheddar-deep)}
+.loc{font-size:11px;color:var(--ink-soft);font-weight:500}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--pine);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+
+/* Content area */
+.content{flex:1;overflow-y:auto;padding:0 16px 90px;scrollbar-width:none}
+.content::-webkit-scrollbar{display:none}
+.view{display:none}
+.view.active{display:block;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Truck status card */
+.truckcard{
+  background:linear-gradient(135deg,var(--pine) 0%,var(--pine-deep) 100%);
+  border-radius:var(--radius);padding:16px;color:#fff;box-shadow:var(--shadow);
+  position:relative;overflow:hidden;margin-bottom:14px;
+}
+.truckcard::after{content:"";position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:rgba(255,176,32,.12)}
+.truckcard .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--cheddar);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--cheddar);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.truckcard h2{font-family:var(--font-display);font-size:19px;font-weight:700;margin-bottom:4px}
+.truckcard .sub{font-size:12.5px;color:#CFE0D6;margin-bottom:12px}
+.truckstats{display:flex;gap:8px}
+.tstat{background:rgba(255,255,255,.1);border-radius:12px;padding:8px 12px;flex:1}
+.tstat b{display:block;font-size:16px;font-family:var(--font-display)}
+.tstat span{font-size:10.5px;color:#B9CDC2}
+.truckcard .cta{margin-top:12px;width:100%;background:var(--cheddar);border:none;color:var(--pine-deep);font-weight:700;font-size:13.5px;padding:11px;border-radius:12px;cursor:pointer;font-family:var(--font-body)}
+
+/* Flash deal */
+.flash{background:#FFF4E0;border:1.5px dashed var(--cheddar-deep);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.flash .t{font-size:12.5px;line-height:1.35}
+.flash b{color:var(--berry)}
+.flash .timer{margin-left:auto;background:var(--berry);color:#fff;font-weight:700;font-size:12px;padding:5px 9px;border-radius:8px;font-variant-numeric:tabular-nums;flex-shrink:0}
+
+/* Section titles */
+.sect{display:flex;justify-content:space-between;align-items:baseline;margin:18px 2px 10px}
+.sect h3{font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--pine-deep)}
+.sect a{font-size:12px;color:var(--pine-soft);font-weight:600;text-decoration:none;cursor:pointer}
+
+/* Category chips */
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;background:var(--card);border:1.5px solid var(--line);border-radius:99px;padding:8px 14px;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;white-space:nowrap;font-family:var(--font-body)}
+.chip.on{background:var(--pine);border-color:var(--pine);color:#fff}
+
+/* Product grid */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.prod{background:var(--card);border-radius:16px;padding:12px;box-shadow:var(--shadow);position:relative;display:flex;flex-direction:column}
+.prod .pic{font-size:34px;text-align:center;padding:10px 0 6px}
+.prod .name{font-size:12.5px;font-weight:600;line-height:1.25;margin-bottom:2px}
+.prod .size{font-size:10.5px;color:var(--ink-soft);margin-bottom:6px}
+.prod .row{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
+.prod .price{font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--pine-deep)}
+.badge-cold{position:absolute;top:8px;left:8px;background:#E4F0FF;color:var(--cold);font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:99px}
+.badge-low{position:absolute;top:8px;right:8px;background:#FDEAE3;color:var(--berry);font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:99px}
+.addbtn{width:30px;height:30px;border-radius:10px;background:var(--cheddar);border:none;color:var(--pine-deep);font-size:18px;font-weight:700;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
+.qty{display:flex;align-items:center;gap:8px}
+.qty button{width:26px;height:26px;border-radius:8px;border:1.5px solid var(--pine);background:#fff;color:var(--pine);font-weight:700;cursor:pointer;font-size:14px}
+.qty span{font-weight:700;font-size:13px;min-width:14px;text-align:center}
+.stockline{font-size:10px;color:var(--ink-soft);margin-top:4px}
+.stockline.low{color:var(--berry);font-weight:600}
+
+/* Bundles */
+.bundles{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+.bundles::-webkit-scrollbar{display:none}
+.bundle{flex-shrink:0;width:210px;border-radius:16px;padding:14px;color:#fff;position:relative;overflow:hidden;cursor:pointer}
+.bundle.b1{background:linear-gradient(135deg,#5B2A86,#3D1B5C)}
+.bundle.b2{background:linear-gradient(135deg,#B4530A,#7C3606)}
+.bundle.b3{background:linear-gradient(135deg,#0E7490,#164E63)}
+.bundle .bi{font-size:26px}
+.bundle h4{font-family:var(--font-display);font-size:15px;font-weight:700;margin:6px 0 3px}
+.bundle p{font-size:11px;opacity:.85;line-height:1.4;margin-bottom:8px}
+.bundle .bp{display:flex;justify-content:space-between;align-items:center}
+.bundle .bp b{font-family:var(--font-display);font-size:17px}
+.bundle .bp button{background:rgba(255,255,255,.9);border:none;border-radius:8px;padding:6px 10px;font-weight:700;font-size:11px;cursor:pointer;color:var(--ink);font-family:var(--font-body)}
+
+/* Subscriptions */
+.subcard{background:var(--card);border-radius:16px;padding:14px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.subcard .si{width:44px;height:44px;border-radius:12px;background:var(--snow);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.subcard h4{font-size:13.5px;font-weight:700}
+.subcard p{font-size:11.5px;color:var(--ink-soft);line-height:1.4}
+.subcard .sp{margin-left:auto;text-align:right;flex-shrink:0}
+.subcard .sp b{font-family:var(--font-display);color:var(--pine-deep);font-size:15px;display:block}
+.subcard .sp button{margin-top:4px;background:var(--pine);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-body)}
+
+/* Map view */
+.mapwrap{border-radius:18px;overflow:hidden;box-shadow:var(--shadow);background:#DDE8DC;position:relative;margin-bottom:12px}
+.mapwrap svg{display:block;width:100%;height:auto}
+.maplegend{position:absolute;bottom:10px;left:10px;background:rgba(255,255,255,.92);border-radius:10px;padding:7px 10px;font-size:10.5px;font-weight:600;display:flex;gap:12px}
+.maplegend span{display:flex;align-items:center;gap:5px}
+.lg{width:9px;height:9px;border-radius:50%}
+.groupcard{background:var(--card);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px}
+.groupcard h4{font-size:13.5px;font-weight:700;margin-bottom:4px}
+.groupcard p{font-size:12px;color:var(--ink-soft);margin-bottom:10px;line-height:1.45}
+.meter{height:10px;background:var(--snow);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.meter i{display:block;height:100%;width:60%;background:linear-gradient(90deg,var(--cheddar),var(--cheddar-deep));border-radius:99px;transition:width .6s ease}
+.meterlabels{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:5px;font-weight:600}
+.feednote{background:#EAF3EE;border-radius:12px;padding:10px 12px;font-size:11.5px;color:var(--pine-deep);line-height:1.45;margin-bottom:10px}
+
+/* Cart */
+.cartline{background:var(--card);border-radius:14px;padding:11px 13px;display:flex;align-items:center;gap:11px;margin-bottom:8px;box-shadow:var(--shadow)}
+.cartline .ci{font-size:24px}
+.cartline .cn{flex:1}
+.cartline .cn b{font-size:12.5px;display:block}
+.cartline .cn span{font-size:10.5px;color:var(--ink-soft)}
+.cartline .cp{font-weight:700;font-size:13px;font-family:var(--font-display)}
+.coldopt{background:#E9F2FF;border:1.5px solid #BFDBFE;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin:12px 0}
+.coldopt .ct{flex:1;font-size:12px;line-height:1.4}
+.coldopt b{color:var(--cold)}
+.switch{width:44px;height:25px;border-radius:99px;background:#CBD5E1;position:relative;cursor:pointer;border:none;transition:background .2s;flex-shrink:0}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:left .2s}
+.switch.on{background:var(--cold)}
+.switch.on::after{left:22px}
+.totals{background:var(--card);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-top:12px}
+.trow{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft);margin-bottom:7px}
+.trow.deal{color:var(--pine-soft);font-weight:600}
+.trow.grand{font-size:16px;color:var(--ink);font-weight:700;font-family:var(--font-display);border-top:1px solid var(--line);padding-top:9px;margin-top:9px;margin-bottom:0}
+.strike{text-decoration:line-through;opacity:.55;margin-right:5px}
+.paybtn{width:100%;margin-top:14px;background:var(--pine);color:#fff;border:none;border-radius:14px;padding:15px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:var(--font-body)}
+.paybtn:active{transform:scale(.98)}
+.emptycart{text-align:center;padding:50px 20px;color:var(--ink-soft)}
+.emptycart .e{font-size:44px;margin-bottom:10px}
+.emptycart p{font-size:13px;line-height:1.5}
+.emptycart button{margin-top:14px;background:var(--cheddar);border:none;border-radius:12px;padding:11px 20px;font-weight:700;cursor:pointer;font-size:13px;font-family:var(--font-body);color:var(--pine-deep)}
+
+/* Order tracking */
+.trackcard{background:var(--card);border-radius:18px;padding:18px;box-shadow:var(--shadow);margin-bottom:14px}
+.trackcard h3{font-family:var(--font-display);font-size:17px;margin-bottom:2px}
+.trackcard .oid{font-size:11px;color:var(--ink-soft);margin-bottom:16px}
+.steps{position:relative;padding-left:26px}
+.steps::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.step{position:relative;padding-bottom:18px}
+.step:last-child{padding-bottom:0}
+.step::before{content:"";position:absolute;left:-24px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--line)}
+.step.done::before{background:var(--pine);border-color:var(--pine)}
+.step.now::before{background:var(--cheddar);border-color:var(--cheddar);animation:pulse 1.4s infinite}
+.step b{font-size:12.5px;display:block}
+.step span{font-size:11px;color:var(--ink-soft)}
+.etabig{background:var(--pine-deep);color:#fff;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
+.etabig b{font-family:var(--font-display);font-size:22px;color:var(--cheddar)}
+.etabig span{font-size:12px;color:#CFE0D6}
+
+/* Rewards */
+.rewardcard{background:linear-gradient(135deg,var(--cheddar),var(--cheddar-deep));border-radius:18px;padding:18px;color:var(--pine-deep);margin-bottom:14px;box-shadow:var(--shadow)}
+.rewardcard h3{font-family:var(--font-display);font-size:18px;font-weight:800;margin-bottom:2px}
+.rewardcard p{font-size:12px;font-weight:500;margin-bottom:14px}
+.punches{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.punch{aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;border:2px dashed rgba(18,51,42,.35)}
+.punch.got{background:var(--pine-deep);color:var(--cheddar);border-style:solid;border-color:var(--pine-deep)}
+.refer{background:var(--card);border-radius:16px;padding:14px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.refer .ri{font-size:26px}
+.refer b{font-size:13px;display:block}
+.refer p{font-size:11.5px;color:var(--ink-soft)}
+
+/* Bottom nav */
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);display:flex;padding:8px 6px calc(12px + env(safe-area-inset-bottom));z-index:50}
+.navbtn{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--ink-soft);cursor:pointer;font-family:var(--font-body);position:relative}
+.navbtn .ni{font-size:20px;filter:grayscale(1);opacity:.55;transition:.15s}
+.navbtn.on{color:var(--pine)}
+.navbtn.on .ni{filter:none;opacity:1;transform:translateY(-1px)}
+.cartcount{position:absolute;top:-4px;right:calc(50% - 18px);background:var(--berry);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+/* Toast */
+.toast{position:absolute;bottom:86px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--pine-deep);color:#fff;font-size:12.5px;font-weight:600;padding:10px 16px;border-radius:99px;opacity:0;transition:.3s;z-index:70;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Confirm overlay */
+.confirm{position:absolute;inset:0;background:var(--pine-deep);z-index:80;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:30px;border-radius:inherit}
+.confirm.show{display:flex;animation:fadeUp .35s ease}
+.confirm .big{font-size:64px;margin-bottom:14px}
+.confirm h2{font-family:var(--font-display);font-size:24px;color:var(--cheddar);margin-bottom:8px}
+.confirm p{font-size:13.5px;line-height:1.55;color:#CFE0D6;max-width:260px}
+.confirm button{margin-top:22px;background:var(--cheddar);color:var(--pine-deep);border:none;border-radius:12px;padding:13px 26px;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--font-body)}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="stage-note">
+    <div class="tag">DEMO · CUSTOMER APP</div>
+    <h1>Cariboo<span>Dash</span></h1>
+    <p>The convenience store that comes to you. A stocked vehicle roams Williams Lake — customers see live inventory, live location, and get "we're nearby" deals.</p>
+    <p>Everything on this phone is interactive: browse, add to cart, watch the truck move, place an order and track it.</p>
+  </div>
+
+  <div class="phone"><div class="screen">
+
+    <!-- push notification -->
+    <div class="push" id="push" onclick="dismissPush()">
+      <div class="emoji">🚚</div>
+      <div><b>CaribooDash is in your neighbourhood!</b>
+      <p>We're parked near Boitanio Mall for the next 25 min. Free delivery within 2 km — cold drinks just restocked.</p></div>
+    </div>
+
+    <div class="statusbar"><span>9:41</span><span>Williams Lake, BC&nbsp;&nbsp;📶 🔋</span></div>
+
+    <div class="appbar">
+      <div class="brandrow">
+        <div>
+          <div class="brand">Cariboo<span class="dash">Dash</span></div>
+          <div class="loc">📍 Delivering to: 214 Western Ave</div>
+        </div>
+        <div class="avatar">JT</div>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+
+      <!-- ============ HOME ============ -->
+      <div class="view active" id="view-home">
+        <div class="truckcard">
+          <div class="live"><span class="dot"></span> Truck live now</div>
+          <h2>We're 1.8 km from you</h2>
+          <div class="sub">Parked at Boitanio Mall · heading to Hodgson Rd area next</div>
+          <div class="truckstats">
+            <div class="tstat"><b id="homeEta">12 min</b><span>Est. delivery</span></div>
+            <div class="tstat"><b>$0</b><span>Delivery in zone</span></div>
+            <div class="tstat"><b>142</b><span>Items on board</span></div>
+          </div>
+          <button class="cta" onclick="go('map')">See truck on map →</button>
+        </div>
+
+        <div class="flash">
+          <div style="font-size:20px">⚡</div>
+          <div class="t"><b>Flash deal:</b> cold drinks <b>20% off</b> while we're in your zone</div>
+          <div class="timer" id="flashTimer">24:37</div>
+        </div>
+
+        <div class="sect"><h3>Shop the truck</h3><a onclick="go('shop')">See all 142 →</a></div>
+        <div class="chips" id="homeChips"></div>
+        <div style="height:10px"></div>
+        <div class="grid" id="homeGrid"></div>
+
+        <div class="sect"><h3>Bundles &amp; deals</h3></div>
+        <div class="bundles">
+          <div class="bundle b1"><div class="bi">🍿</div><h4>Movie Night Pack</h4><p>2 chips · popcorn · 2 chocolate bars · candy · 2 cold pops</p><div class="bp"><b>$19.99</b><button onclick="addBundle('Movie Night Pack',19.99,'🍿')">Add</button></div></div>
+          <div class="bundle b2"><div class="bi">👷</div><h4>Worksite Pack</h4><p>4 energy drinks · jerky · 4 protein bars · trail mix · coffee</p><div class="bp"><b>$49.99</b><button onclick="addBundle('Worksite Pack',49.99,'👷')">Add</button></div></div>
+          <div class="bundle b3"><div class="bi">🤒</div><h4>Sick Day Pack</h4><p>Juice · crackers · soup · ginger ale · tissues · a treat</p><div class="bp"><b>$24.99</b><button onclick="addBundle('Sick Day Pack',24.99,'🤒')">Add</button></div></div>
+        </div>
+
+        <div class="sect"><h3>Subscriptions</h3></div>
+        <div class="subcard"><div class="si">📦</div><div><h4>Weekly Snack Drop</h4><p>Every Friday: chips, drinks &amp; treats, picked for you</p></div><div class="sp"><b>$29<span style="font-size:10px">/wk</span></b><button onclick="toast('Added to your plan (demo)')">Start</button></div></div>
+        <div class="subcard"><div class="si">🏢</div><div><h4>Office Snack Service</h4><p>Stocked every Monday. For shops, offices &amp; crews</p></div><div class="sp"><b>$150<span style="font-size:10px">/mo</span></b><button onclick="toast('Request sent (demo)')">Start</button></div></div>
+      </div>
+
+      <!-- ============ SHOP ============ -->
+      <div class="view" id="view-shop">
+        <div class="sect" style="margin-top:4px"><h3>On the truck right now</h3><a>142 items</a></div>
+        <div class="feednote">🚚 You're seeing <b>live inventory</b> — only what's physically on the vehicle. Restocked 38 min ago.</div>
+        <div class="chips" id="shopChips"></div>
+        <div style="height:10px"></div>
+        <div class="grid" id="shopGrid"></div>
+      </div>
+
+      <!-- ============ MAP ============ -->
+      <div class="view" id="view-map">
+        <div class="sect" style="margin-top:4px"><h3>Live truck map</h3><a>Williams Lake</a></div>
+        <div class="mapwrap">
+          <svg viewBox="0 0 360 300" xmlns="http://www.w3.org/2000/svg" aria-label="Stylized map of Williams Lake">
+            <rect width="360" height="300" fill="#E4EBDD"/>
+            <!-- lake -->
+            <path d="M0 235 Q60 210 120 232 Q180 254 240 240 Q310 224 360 248 L360 300 L0 300 Z" fill="#AFCBE3"/>
+            <text x="150" y="278" font-size="11" fill="#5B7C99" font-style="italic" font-family="Georgia,serif">Williams Lake</text>
+            <!-- green patches -->
+            <ellipse cx="40" cy="50" rx="55" ry="38" fill="#CBDCC0"/>
+            <ellipse cx="320" cy="70" rx="60" ry="45" fill="#CBDCC0"/>
+            <ellipse cx="235" cy="205" rx="34" ry="20" fill="#BED8B3"/>
+            <text x="218" y="209" font-size="8.5" fill="#5F7A55" font-family="sans-serif">Scout Island</text>
+            <!-- roads -->
+            <path d="M-10 190 Q80 150 170 140 Q260 130 370 90" stroke="#fff" stroke-width="10" fill="none"/>
+            <path d="M-10 190 Q80 150 170 140 Q260 130 370 90" stroke="#F3C57B" stroke-width="4" fill="none"/>
+            <text x="20" y="168" font-size="8.5" fill="#8A6D3B" transform="rotate(-14 20 168)" font-family="sans-serif">Hwy 97</text>
+            <path d="M120 0 Q130 70 150 141" stroke="#fff" stroke-width="7" fill="none"/>
+            <path d="M210 40 Q200 90 190 137 Q182 180 200 225" stroke="#fff" stroke-width="7" fill="none"/>
+            <path d="M60 60 Q120 90 190 100 Q260 110 320 150" stroke="#fff" stroke-width="6" fill="none"/>
+            <!-- landmarks -->
+            <g font-family="sans-serif">
+              <rect x="150" y="118" width="10" height="10" rx="2" fill="#8FA98F"/><text x="164" y="127" font-size="8.5" fill="#41544B">Boitanio Mall</text>
+              <rect x="252" y="88" width="10" height="10" rx="2" fill="#8FA98F"/><text x="266" y="97" font-size="8.5" fill="#41544B">Hospital</text>
+              <rect x="70" y="196" width="10" height="10" rx="2" fill="#8FA98F"/><text x="84" y="205" font-size="8.5" fill="#41544B">Stampede Grounds</text>
+              <rect x="286" y="142" width="10" height="10" rx="2" fill="#8FA98F"/><text x="230" y="164" font-size="8.5" fill="#41544B">Industrial Park</text>
+            </g>
+            <!-- delivery radius -->
+            <circle id="radius" cx="160" cy="125" r="52" fill="rgba(255,176,32,.18)" stroke="#E89400" stroke-width="1.5" stroke-dasharray="5 4"/>
+            <!-- customer pin -->
+            <g transform="translate(196 156)">
+              <circle r="7" fill="#2D7FF9" stroke="#fff" stroke-width="2.5"/>
+              <text x="11" y="4" font-size="9" font-weight="700" fill="#1D4ED8" font-family="sans-serif">You</text>
+            </g>
+            <!-- truck -->
+            <g id="truck" transform="translate(160 125)">
+              <circle r="13" fill="#1E4D3B" stroke="#FFB020" stroke-width="2.5"/>
+              <text y="5" x="0" text-anchor="middle" font-size="13">🚚</text>
+            </g>
+          </svg>
+          <div class="maplegend">
+            <span><span class="lg" style="background:#1E4D3B"></span>Truck</span>
+            <span><span class="lg" style="background:#2D7FF9"></span>You</span>
+            <span><span class="lg" style="background:#FFB020"></span>Free-delivery zone</span>
+          </div>
+        </div>
+
+        <div class="groupcard">
+          <h4>👥 Group delivery — your neighbourhood</h4>
+          <p><b id="groupN">3</b> neighbours near Western Ave have open orders. At 5 orders, everyone's delivery drops to <b>$1.99</b>. At 10 — free.</p>
+          <div class="meter"><i id="groupMeter"></i></div>
+          <div class="meterlabels"><span>$4.99</span><span>5 → $1.99</span><span>10 → FREE</span></div>
+        </div>
+
+        <div class="feednote">📍 <b>Next stop:</b> Industrial Park, 3:00–4:30 PM — high demand on weekday afternoons. Pre-order now and we'll bring it on that run.</div>
+      </div>
+
+      <!-- ============ CART ============ -->
+      <div class="view" id="view-cart">
+        <div class="sect" style="margin-top:4px"><h3>Your order</h3><a id="cartCountLabel"></a></div>
+        <div id="cartList"></div>
+        <div id="cartExtras" style="display:none">
+          <div class="coldopt">
+            <div style="font-size:22px">❄️</div>
+            <div class="ct"><b>Cold Delivery Upgrade</b> — drinks arrive fridge-cold from the cooler. <b>+$1.00</b></div>
+            <button class="switch" id="coldSwitch" onclick="toggleCold()"></button>
+          </div>
+          <div class="totals" id="totals"></div>
+          <button class="paybtn" onclick="placeOrder()">Pay <span id="payAmt"></span> · Apple&nbsp;Pay</button>
+          <p style="font-size:10.5px;color:var(--ink-soft);text-align:center;margin-top:10px">Demo checkout — no real payment is processed.</p>
+        </div>
+        <div id="cartEmpty" class="emptycart" style="display:none">
+          <div class="e">🛒</div>
+          <p>Nothing here yet.<br>The truck is nearby — grab something before it moves on!</p>
+          <button onclick="go('shop')">Browse the truck</button>
+        </div>
+      </div>
+
+      <!-- ============ ORDERS / TRACKING ============ -->
+      <div class="view" id="view-orders">
+        <div class="sect" style="margin-top:4px"><h3>Track order</h3><a>#WL-1042</a></div>
+        <div class="trackcard">
+          <h3>On its way 🚚</h3>
+          <div class="oid">Placed 4 min ago · 6 items · $31.47</div>
+          <div class="steps">
+            <div class="step done"><b>Order received</b><span>9:37 AM</span></div>
+            <div class="step done"><b>Packed on the truck</b><span>9:39 AM — everything was already on board</span></div>
+            <div class="step now"><b>Driver heading your way</b><span>1.3 km away on Western Ave</span></div>
+            <div class="step"><b>Delivered</b><span>We'll text you at drop-off</span></div>
+          </div>
+        </div>
+        <div class="etabig"><span>Estimated arrival</span><b id="trackEta">8 min</b></div>
+        <div class="sect"><h3>Past orders</h3></div>
+        <div class="cartline"><div class="ci">🧾</div><div class="cn"><b>Fri, Jul 10 · 8 items</b><span>Movie Night Pack, Coke ×2, Old Dutch…</span></div><div class="cp">$34.20</div></div>
+        <div class="cartline"><div class="ci">🧾</div><div class="cn"><b>Tue, Jul 7 · 3 items</b><span>Monster ×2, beef jerky</span></div><div class="cp">$16.45</div></div>
+        <button class="paybtn" style="background:var(--cheddar);color:var(--pine-deep)" onclick="toast('Friday order added to cart (demo)')">↻ Buy my usual Friday order again</button>
+      </div>
+
+      <!-- ============ REWARDS ============ -->
+      <div class="view" id="view-rewards">
+        <div class="sect" style="margin-top:4px"><h3>Dash Rewards</h3><a>Jamie T.</a></div>
+        <div class="rewardcard">
+          <h3>7 of 10 punches</h3>
+          <p>3 more orders and you get $10 credit</p>
+          <div class="punches">
+            <div class="punch got">✓</div><div class="punch got">✓</div><div class="punch got">✓</div><div class="punch got">✓</div><div class="punch got">✓</div>
+            <div class="punch got">✓</div><div class="punch got">✓</div><div class="punch">8</div><div class="punch">9</div><div class="punch">$10</div>
+          </div>
+        </div>
+        <div class="refer"><div class="ri">🎁</div><div><b>Refer a friend, get $5 each</b><p>Share your code: <b>JAMIE-WL</b></p></div><button class="addbtn" style="margin-left:auto" onclick="toast('Code copied (demo)')">⇪</button></div>
+        <div class="refer"><div class="ri">🥇</div><div><b>First order = free delivery</b><p>Automatically applied for new customers</p></div></div>
+        <div class="feednote">💡 Rewards, referrals and "buy again" keep customers ordering weekly — the repeat rate is the core economics of this business.</div>
+      </div>
+
+    </div>
+
+    <!-- bottom nav -->
+    <div class="nav">
+      <button class="navbtn on" data-v="home" onclick="go('home')"><span class="ni">🏠</span>Home</button>
+      <button class="navbtn" data-v="shop" onclick="go('shop')"><span class="ni">🛍️</span>Shop</button>
+      <button class="navbtn" data-v="map" onclick="go('map')"><span class="ni">🗺️</span>Truck</button>
+      <button class="navbtn" data-v="cart" onclick="go('cart')"><span class="ni">🛒</span>Cart<span class="cartcount" id="cartBadge" style="display:none">0</span></button>
+      <button class="navbtn" data-v="orders" onclick="go('orders')"><span class="ni">📦</span>Orders</button>
+      <button class="navbtn" data-v="rewards" onclick="go('rewards')"><span class="ni">⭐</span>Rewards</button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="confirm" id="confirm">
+      <div class="big">🎉</div>
+      <h2>Order placed!</h2>
+      <p>Order <b>#WL-1042</b> is being grabbed off the truck right now. Estimated arrival: <b>8 minutes</b>.</p>
+      <button onclick="closeConfirm()">Track my order</button>
+    </div>
+
+  </div></div>
+</div>
+
+<script>
+/* ---------- data ---------- */
+const CATS = ["All","🍫 Chocolate","🍿 Chips","🥤 Drinks","⚡ Energy","🥩 Work Snacks","🏠 Essentials","🐶 Pets"];
+const PRODUCTS = [
+ {id:1,n:"KitKat",s:"45 g",p:2.49,e:"🍫",c:"🍫 Chocolate",st:28},
+ {id:2,n:"Coffee Crisp",s:"50 g",p:2.49,e:"🍫",c:"🍫 Chocolate",st:19},
+ {id:3,n:"Reese's PB Cups",s:"46 g",p:2.79,e:"🥜",c:"🍫 Chocolate",st:12},
+ {id:4,n:"Sour Patch Kids",s:"185 g",p:4.29,e:"🍬",c:"🍫 Chocolate",st:9},
+ {id:5,n:"Doritos Nacho",s:"235 g",p:5.49,e:"🌮",c:"🍿 Chips",st:14},
+ {id:6,n:"Old Dutch Ripple",s:"200 g",p:4.99,e:"🥔",c:"🍿 Chips",st:11},
+ {id:7,n:"Miss Vickie's S&V",s:"200 g",p:5.29,e:"🥔",c:"🍿 Chips",st:3},
+ {id:8,n:"Lays Classic",s:"165 g",p:4.79,e:"🥔",c:"🍿 Chips",st:16},
+ {id:9,n:"Coca-Cola",s:"500 mL",p:2.99,e:"🥤",c:"🥤 Drinks",st:22,cold:true},
+ {id:10,n:"Ginger Ale",s:"500 mL",p:2.99,e:"🥤",c:"🥤 Drinks",st:13,cold:true},
+ {id:11,n:"Gatorade Cool Blue",s:"710 mL",p:3.79,e:"🧊",c:"🥤 Drinks",st:8,cold:true},
+ {id:12,n:"Spring Water",s:"1 L",p:2.29,e:"💧",c:"🥤 Drinks",st:30},
+ {id:13,n:"Monster Ultra",s:"473 mL",p:3.99,e:"⚡",c:"⚡ Energy",st:4,cold:true},
+ {id:14,n:"Red Bull",s:"355 mL",p:4.29,e:"⚡",c:"⚡ Energy",st:15,cold:true},
+ {id:15,n:"Beef Jerky Original",s:"80 g",p:8.99,e:"🥩",c:"🥩 Work Snacks",st:10},
+ {id:16,n:"Protein Bar Choc",s:"60 g",p:3.99,e:"💪",c:"🥩 Work Snacks",st:18},
+ {id:17,n:"Trail Mix",s:"250 g",p:6.49,e:"🥜",c:"🥩 Work Snacks",st:7},
+ {id:18,n:"AA Batteries ×4",s:"4-pack",p:6.99,e:"🔋",c:"🏠 Essentials",st:6},
+ {id:19,n:"USB-C Charger Cable",s:"1 m",p:12.99,e:"🔌",c:"🏠 Essentials",st:5},
+ {id:20,n:"Toilet Paper",s:"4 rolls",p:5.99,e:"🧻",c:"🏠 Essentials",st:8},
+ {id:21,n:"Ibuprofen",s:"24 tabs",p:7.49,e:"💊",c:"🏠 Essentials",st:4},
+ {id:22,n:"Dog Treats Bacon",s:"180 g",p:6.99,e:"🦴",c:"🐶 Pets",st:9},
+];
+let cart = {};        // id -> qty
+let bundleCart = [];  // {name,price,emoji}
+let coldUpgrade = false;
+let activeCat = {home:"All", shop:"All"};
+
+/* ---------- rendering ---------- */
+function chipRow(el, where){
+  el.innerHTML = CATS.map(c=>`<button class="chip ${activeCat[where]===c?'on':''}" onclick="setCat('${where}','${c}')">${c}</button>`).join("");
+}
+function setCat(where,c){ activeCat[where]=c; render(); }
+function prodCard(p){
+  const q = cart[p.id]||0;
+  return `<div class="prod">
+    ${p.cold?'<span class="badge-cold">❄ COLD</span>':''}
+    ${p.st<=5?'<span class="badge-low">Only '+p.st+' left</span>':''}
+    <div class="pic">${p.e}</div>
+    <div class="name">${p.n}</div>
+    <div class="size">${p.s}</div>
+    <div class="row">
+      <div class="price">$${p.p.toFixed(2)}</div>
+      ${q===0
+        ?`<button class="addbtn" onclick="add(${p.id})">+</button>`
+        :`<div class="qty"><button onclick="sub(${p.id})">−</button><span>${q}</span><button onclick="add(${p.id})">+</button></div>`}
+    </div>
+    <div class="stockline ${p.st<=5?'low':''}">${p.st} on the truck</div>
+  </div>`;
+}
+function filtered(where){
+  const c = activeCat[where];
+  return c==="All"? PRODUCTS : PRODUCTS.filter(p=>p.c===c);
+}
+function render(){
+  chipRow(document.getElementById("homeChips"),"home");
+  chipRow(document.getElementById("shopChips"),"shop");
+  document.getElementById("homeGrid").innerHTML = filtered("home").slice(0,6).map(prodCard).join("");
+  document.getElementById("shopGrid").innerHTML = filtered("shop").map(prodCard).join("");
+  renderCart();
+}
+
+/* ---------- cart ---------- */
+function add(id){ cart[id]=(cart[id]||0)+1; render(); toast("Added to cart"); }
+function sub(id){ if(cart[id]){ cart[id]--; if(!cart[id]) delete cart[id]; } render(); }
+function addBundle(name,price,emoji){ bundleCart.push({name,price,emoji}); render(); toast(name+" added"); }
+function cartItems(){ return Object.entries(cart).map(([id,q])=>({p:PRODUCTS.find(x=>x.id==id),q})); }
+function cartCount(){ return cartItems().reduce((a,c)=>a+c.q,0) + bundleCart.length; }
+function subtotal(){
+  return cartItems().reduce((a,c)=>a+c.p.p*c.q,0) + bundleCart.reduce((a,b)=>a+b.price,0);
+}
+function renderCart(){
+  const n = cartCount();
+  const badge = document.getElementById("cartBadge");
+  badge.style.display = n? "flex":"none"; badge.textContent = n;
+  document.getElementById("cartCountLabel").textContent = n+" item"+(n===1?"":"s");
+  const list = document.getElementById("cartList");
+  const extras = document.getElementById("cartExtras");
+  const empty = document.getElementById("cartEmpty");
+  if(!n){ list.innerHTML=""; extras.style.display="none"; empty.style.display="block"; return; }
+  empty.style.display="none"; extras.style.display="block";
+  list.innerHTML =
+    bundleCart.map((b,i)=>`<div class="cartline"><div class="ci">${b.emoji}</div><div class="cn"><b>${b.name}</b><span>Bundle deal</span></div><div class="cp">$${b.price.toFixed(2)}</div><button class="qty" style="border:none;background:none;cursor:pointer;font-size:15px" onclick="rmBundle(${i})">✕</button></div>`).join("") +
+    cartItems().map(c=>`<div class="cartline"><div class="ci">${c.p.e}</div><div class="cn"><b>${c.p.n}</b><span>${c.p.s}${c.p.cold?' · ❄ cold available':''}</span></div>
+      <div class="qty"><button onclick="sub(${c.p.id})">−</button><span>${c.q}</span><button onclick="add(${c.p.id})">+</button></div>
+      <div class="cp" style="min-width:52px;text-align:right">$${(c.p.p*c.q).toFixed(2)}</div></div>`).join("");
+  const sub_ = subtotal();
+  const cold = coldUpgrade? 1.00 : 0;
+  const groupDeal = true; // demo: 3 neighbours already ordering
+  const delivery = 4.99, dealDelivery = 1.99;
+  const gst = (sub_+cold+dealDelivery)*0.05;
+  const total = sub_+cold+dealDelivery+gst;
+  document.getElementById("totals").innerHTML = `
+    <div class="trow"><span>Subtotal</span><span>$${sub_.toFixed(2)}</span></div>
+    ${cold?`<div class="trow"><span>❄ Cold Delivery Upgrade</span><span>$1.00</span></div>`:""}
+    <div class="trow deal"><span>Delivery · 👥 group deal (3 neighbours)</span><span><span class="strike">$${delivery.toFixed(2)}</span>$${dealDelivery.toFixed(2)}</span></div>
+    <div class="trow"><span>GST (5%)</span><span>$${gst.toFixed(2)}</span></div>
+    <div class="trow grand"><span>Total</span><span>$${total.toFixed(2)}</span></div>`;
+  document.getElementById("payAmt").textContent = "$"+total.toFixed(2);
+}
+function rmBundle(i){ bundleCart.splice(i,1); render(); }
+function toggleCold(){ coldUpgrade=!coldUpgrade; document.getElementById("coldSwitch").classList.toggle("on",coldUpgrade); renderCart(); }
+function placeOrder(){ document.getElementById("confirm").classList.add("show"); }
+function closeConfirm(){
+  document.getElementById("confirm").classList.remove("show");
+  cart={}; bundleCart=[]; coldUpgrade=false;
+  document.getElementById("coldSwitch").classList.remove("on");
+  render(); go("orders");
+}
+
+/* ---------- nav ---------- */
+function go(v){
+  document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
+  document.getElementById("view-"+v).classList.add("active");
+  document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  document.getElementById("content").scrollTop=0;
+}
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),1800);
+}
+
+/* ---------- push notification demo ---------- */
+function dismissPush(){ document.getElementById("push").classList.remove("show"); go("map"); }
+setTimeout(()=>document.getElementById("push").classList.add("show"),2500);
+setTimeout(()=>document.getElementById("push").classList.remove("show"),11000);
+
+/* ---------- flash timer ---------- */
+let flashS = 24*60+37;
+setInterval(()=>{
+  flashS=Math.max(0,flashS-1);
+  const m=String(Math.floor(flashS/60)).padStart(2,"0"), s=String(flashS%60).padStart(2,"0");
+  document.getElementById("flashTimer").textContent=m+":"+s;
+},1000);
+
+/* ---------- animated truck on the map ---------- */
+const path=[[160,125],[172,131],[184,136],[192,146],[197,158],[200,172],[199,188],[196,204],[200,218],[196,204],[199,188],[200,172],[197,158],[192,146],[184,136],[172,131]];
+let ti=0;
+setInterval(()=>{
+  ti=(ti+1)%path.length;
+  const [x,y]=path[ti];
+  const truck=document.getElementById("truck");
+  const radius=document.getElementById("radius");
+  if(truck){ truck.style.transition="transform 1.4s linear"; truck.setAttribute("transform",`translate(${x} ${y})`);}
+  if(radius){ radius.setAttribute("cx",x); radius.setAttribute("cy",y);}
+},1500);
+
+/* ---------- group meter demo ---------- */
+let groupN=3;
+setInterval(()=>{
+  groupN = groupN>=5?3:groupN+1;
+  document.getElementById("groupN").textContent=groupN;
+  document.getElementById("groupMeter").style.width=(groupN/10*100)+"%";
+},7000);
+
+/* ---------- ETA countdown ---------- */
+let eta=8;
+setInterval(()=>{ eta=eta>1?eta-1:8; document.getElementById("trackEta").textContent=eta+" min"; },20000);
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cariboo Dash — Driver App Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1A15; --panel:#17251E; --panel2:#1E2F26; --line:#2A3D33;
+  --ink:#E8F0EA; --ink-soft:#8FA79A;
+  --cheddar:#FFB020; --cheddar-deep:#E89400;
+  --green:#4ADE80; --red:#F87171; --blue:#60A5FA;
+  --font-display:"Bricolage Grotesque", sans-serif;
+  --font-body:"Inter", system-ui, sans-serif;
+  --mono:"JetBrains Mono", monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:var(--font-body); color:var(--ink);
+  background:#070D0A;
+  background-image:radial-gradient(ellipse at 80% 0%, #12231B 0%, #070D0A 60%);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;
+}
+.stage{display:flex;gap:48px;align-items:center;max-width:1100px;flex-direction:row-reverse}
+.stage-note{color:#9FB4A8;max-width:280px;display:none}
+.stage-note h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.1;color:#fff;margin-bottom:12px}
+.stage-note h1 span{color:var(--cheddar)}
+.stage-note p{font-size:14px;line-height:1.6;margin-bottom:10px}
+.stage-note .tag{display:inline-block;background:rgba(255,176,32,.12);color:var(--cheddar);border:1px solid rgba(255,176,32,.35);padding:4px 10px;border-radius:99px;font-size:12px;font-weight:600;margin-bottom:14px}
+@media(min-width:900px){.stage-note{display:block}}
+
+.phone{width:400px;max-width:100%;height:820px;max-height:92vh;background:#000;border-radius:44px;padding:10px;box-shadow:0 30px 80px rgba(0,0,0,.7), inset 0 0 0 2px #333;flex-shrink:0}
+.screen{width:100%;height:100%;border-radius:36px;overflow:hidden;background:var(--bg);position:relative;display:flex;flex-direction:column}
+@media(max-width:520px){
+  body{padding:0}
+  .phone{width:100%;height:100vh;max-height:100vh;border-radius:0;padding:0;box-shadow:none}
+  .screen{border-radius:0}
+}
+.statusbar{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:12px;font-weight:600;color:var(--ink-soft);flex-shrink:0}
+
+/* header */
+.appbar{padding:6px 18px 12px;flex-shrink:0;display:flex;justify-content:space-between;align-items:center}
+.brand{font-family:var(--font-display);font-weight:800;font-size:20px;letter-spacing:-.02em}
+.brand .dash{color:var(--cheddar)}
+.brand .mode{font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--ink-soft);display:block;text-transform:uppercase}
+.shift{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);padding:7px 12px;border-radius:99px;font-size:11.5px;font-weight:700;color:var(--green);cursor:pointer}
+.shiftdot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.content{flex:1;overflow-y:auto;padding:0 14px 90px;scrollbar-width:none}
+.content::-webkit-scrollbar{display:none}
+.view{display:none}
+.view.active{display:block;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.sect{display:flex;justify-content:space-between;align-items:baseline;margin:16px 2px 10px}
+.sect h3{font-family:var(--font-display);font-size:16px;font-weight:700}
+.sect span{font-size:11px;color:var(--ink-soft);font-weight:600}
+
+/* stat tiles */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 10px}
+.tile b{font-family:var(--mono);font-size:18px;display:block;color:var(--cheddar)}
+.tile span{font-size:10px;color:var(--ink-soft);font-weight:600}
+.tile.alt b{color:var(--green)}
+
+/* orders */
+.order{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:13px;margin-bottom:10px;position:relative;overflow:hidden}
+.order.new{border-color:var(--cheddar);box-shadow:0 0 0 1px var(--cheddar), 0 8px 24px rgba(255,176,32,.12)}
+.ohead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.oid{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--cheddar)}
+.ostatus{font-size:9.5px;font-weight:800;letter-spacing:.08em;padding:4px 9px;border-radius:99px;text-transform:uppercase}
+.st-new{background:rgba(255,176,32,.15);color:var(--cheddar)}
+.st-route{background:rgba(96,165,250,.15);color:var(--blue)}
+.st-done{background:rgba(74,222,128,.13);color:var(--green)}
+.ocust{font-size:13px;font-weight:700;margin-bottom:2px}
+.oaddr{font-size:11px;color:var(--ink-soft);margin-bottom:8px}
+.oitems{font-size:11.5px;color:var(--ink);background:var(--panel2);border-radius:10px;padding:8px 10px;line-height:1.6;margin-bottom:10px}
+.oitems .cold{color:var(--blue);font-weight:700}
+.ofoot{display:flex;justify-content:space-between;align-items:center}
+.ototal{font-family:var(--mono);font-weight:700;font-size:14px}
+.obtn{border:none;border-radius:10px;padding:9px 16px;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--font-body)}
+.obtn.accept{background:var(--cheddar);color:#1A1206}
+.obtn.deliver{background:var(--blue);color:#0B1B33}
+.obtn.done{background:var(--panel2);color:var(--green);cursor:default}
+.odist{font-size:10.5px;color:var(--ink-soft);font-family:var(--mono)}
+
+/* inventory */
+.invtool{display:flex;gap:8px;margin-bottom:12px}
+.scanbtn{flex:1;background:var(--cheddar);color:#1A1206;border:none;border-radius:12px;padding:13px;font-weight:800;font-size:13px;cursor:pointer;font-family:var(--font-body)}
+.scanbtn:active{transform:scale(.98)}
+.invsearch{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:0 14px;font-size:12.5px;font-family:var(--font-body)}
+.invsearch::placeholder{color:var(--ink-soft)}
+.invrow{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:10px 12px;display:flex;align-items:center;gap:11px;margin-bottom:7px}
+.invrow .ie{font-size:20px}
+.invrow .in{flex:1}
+.invrow .in b{font-size:12.5px;display:block}
+.invrow .in span{font-size:10px;color:var(--ink-soft);font-family:var(--mono)}
+.stockbar{width:66px;height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:4px}
+.stockbar i{display:block;height:100%;border-radius:99px}
+.invqty{font-family:var(--mono);font-weight:700;font-size:14px;min-width:34px;text-align:right}
+.invqty.low{color:var(--red)}
+.invqty.ok{color:var(--green)}
+.lowalert{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.35);border-radius:13px;padding:11px 13px;font-size:11.5px;line-height:1.5;margin-bottom:12px;color:#FECACA}
+.lowalert b{color:var(--red)}
+
+/* scanner overlay */
+.scanner{position:absolute;inset:0;background:rgba(7,13,10,.96);z-index:80;display:none;flex-direction:column;align-items:center;justify-content:center;border-radius:inherit;text-align:center;padding:30px}
+.scanner.show{display:flex}
+.scanframe{width:220px;height:150px;border-radius:16px;position:relative;border:2px solid var(--line);background:#0B1410;overflow:hidden;margin-bottom:18px}
+.scanframe::before{content:"";position:absolute;inset:14px;border:2px dashed rgba(255,176,32,.4);border-radius:10px}
+.scanline{position:absolute;left:10px;right:10px;height:3px;background:var(--cheddar);box-shadow:0 0 14px var(--cheddar);top:12px;animation:scan 1.2s ease-in-out infinite alternate}
+@keyframes scan{from{top:12px}to{top:135px}}
+.barcode{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--mono);letter-spacing:2px;font-size:34px;color:#3A4F44}
+.scanner h3{font-family:var(--font-display);font-size:18px;margin-bottom:6px}
+.scanner p{font-size:12px;color:var(--ink-soft);max-width:230px;line-height:1.5}
+.scanresult{margin-top:16px;background:var(--panel);border:1px solid var(--green);border-radius:13px;padding:12px 16px;font-size:13px;display:none}
+.scanresult.show{display:block;animation:fadeUp .3s ease}
+.scanresult b{color:var(--green)}
+.scanner .close{margin-top:20px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:11px 22px;font-weight:700;cursor:pointer;font-size:13px;font-family:var(--font-body)}
+
+/* route / demand */
+.mapwrap{border-radius:16px;overflow:hidden;border:1px solid var(--line);position:relative;margin-bottom:12px;background:#101C16}
+.mapwrap svg{display:block;width:100%;height:auto}
+.stop{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 13px;display:flex;gap:12px;margin-bottom:8px;align-items:center}
+.stop .time{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--cheddar);min-width:74px;line-height:1.5}
+.stop .sn b{font-size:12.5px;display:block}
+.stop .sn span{font-size:10.5px;color:var(--ink-soft);line-height:1.4;display:block}
+.stop.now{border-color:var(--green)}
+.stop .heat{margin-left:auto;font-size:9.5px;font-weight:800;padding:4px 8px;border-radius:99px;flex-shrink:0}
+.h-high{background:rgba(248,113,113,.15);color:var(--red)}
+.h-med{background:rgba(255,176,32,.15);color:var(--cheddar)}
+.h-low{background:rgba(96,165,250,.13);color:var(--blue)}
+
+/* broadcast */
+.bcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.bcard label{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);display:block;margin-bottom:7px}
+.pillrow{display:flex;gap:7px;flex-wrap:wrap}
+.pill{background:var(--panel2);border:1.5px solid var(--line);border-radius:99px;padding:8px 13px;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;font-family:var(--font-body)}
+.pill.on{border-color:var(--cheddar);color:var(--cheddar);background:rgba(255,176,32,.08)}
+.preview{background:#0B1410;border:1px dashed var(--line);border-radius:14px;padding:12px;margin-top:12px}
+.preview .plabel{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);font-weight:800;margin-bottom:8px}
+.pnotif{background:#F6F4EE;color:#1A2420;border-radius:12px;padding:10px 12px;display:flex;gap:9px;font-size:11.5px;line-height:1.4}
+.pnotif b{display:block;color:#12332A;font-size:12px}
+.sendbtn{width:100%;margin-top:12px;background:var(--cheddar);color:#1A1206;border:none;border-radius:13px;padding:14px;font-weight:800;font-size:13.5px;cursor:pointer;font-family:var(--font-body)}
+.sendbtn:active{transform:scale(.98)}
+.reach{font-size:11px;color:var(--ink-soft);text-align:center;margin-top:8px;font-family:var(--mono)}
+.reach b{color:var(--green)}
+
+/* stats view */
+.bigrev{background:linear-gradient(135deg,#1E4D3B,#12332A);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:12px}
+.bigrev span{font-size:11px;color:#9FC4B0;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.bigrev b{font-family:var(--mono);font-size:34px;color:var(--cheddar);display:block;margin:4px 0}
+.bigrev p{font-size:11.5px;color:#B7D2C3}
+.bars{display:flex;align-items:flex-end;gap:6px;height:90px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:4px}
+.bar{flex:1;background:var(--panel2);border-radius:6px 6px 3px 3px;position:relative;min-height:8px}
+.bar.hot{background:linear-gradient(180deg,var(--cheddar),var(--cheddar-deep))}
+.barlabels{display:flex;gap:6px;margin-bottom:12px}
+.barlabels span{flex:1;text-align:center;font-size:8.5px;color:var(--ink-soft);font-family:var(--mono)}
+.topseller{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:10px 12px;margin-bottom:7px}
+.topseller .rank{font-family:var(--mono);font-weight:700;color:var(--cheddar);font-size:13px;width:22px}
+.topseller .tn{flex:1;font-size:12.5px;font-weight:600}
+.topseller .tv{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft)}
+
+/* nav */
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(15,26,21,.97);backdrop-filter:blur(8px);border-top:1px solid var(--line);display:flex;padding:8px 6px calc(12px + env(safe-area-inset-bottom));z-index:50}
+.navbtn{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--ink-soft);cursor:pointer;font-family:var(--font-body);position:relative}
+.navbtn .ni{font-size:19px;opacity:.5;filter:grayscale(1);transition:.15s}
+.navbtn.on{color:var(--cheddar)}
+.navbtn.on .ni{opacity:1;filter:none;transform:translateY(-1px)}
+.ordercount{position:absolute;top:-4px;right:calc(50% - 17px);background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+.toast{position:absolute;bottom:86px;left:50%;transform:translateX(-50%) translateY(20px);background:#E8F0EA;color:#12211A;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:99px;opacity:0;transition:.3s;z-index:70;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="stage-note">
+    <div class="tag">DEMO · DRIVER APP</div>
+    <h1>Cariboo<span>Dash</span> Driver</h1>
+    <p>The operational side: an order queue, live vehicle inventory with a barcode scanner, a demand-based route plan, and a one-tap "we're nearby" broadcast to every customer in range.</p>
+    <p>Try tapping <b style="color:#fff">Scan to load</b> in Inventory, or send a broadcast — new orders arrive live.</p>
+  </div>
+
+  <div class="phone"><div class="screen">
+    <div class="statusbar"><span>9:41</span><span>Unit 01 · WL&nbsp;&nbsp;📶 🔋</span></div>
+
+    <div class="appbar">
+      <div class="brand">Cariboo<span class="dash">Dash</span><span class="mode">Driver · Unit 01</span></div>
+      <button class="shift" onclick="toast('Shift: 9:00 AM – 5:00 PM')"><span class="shiftdot"></span>ON SHIFT</button>
+    </div>
+
+    <div class="content" id="content">
+
+      <!-- ============ ORDERS ============ -->
+      <div class="view active" id="view-orders">
+        <div class="tiles">
+          <div class="tile"><b id="tOrders">11</b><span>Orders today</span></div>
+          <div class="tile alt"><b id="tRev">$247</b><span>Revenue today</span></div>
+          <div class="tile"><b>$22.45</b><span>Avg order</span></div>
+        </div>
+        <div class="sect"><h3>Order queue</h3><span id="queueCount"></span></div>
+        <div id="orderList"></div>
+      </div>
+
+      <!-- ============ INVENTORY ============ -->
+      <div class="view" id="view-inv">
+        <div class="sect" style="margin-top:6px"><h3>Vehicle inventory</h3><span id="invTotal"></span></div>
+        <div class="lowalert">⚠️ <b>4 items low.</b> Monster Ultra and Miss Vickie's are nearly sold out — customers see live counts, so restock before the Industrial Park run at 3:00.</div>
+        <div class="invtool">
+          <button class="scanbtn" onclick="openScanner()">▣ Scan to load</button>
+          <input class="invsearch" placeholder="Search inventory…" oninput="invFilter(this.value)">
+        </div>
+        <div id="invList"></div>
+      </div>
+
+      <!-- ============ ROUTE ============ -->
+      <div class="view" id="view-route">
+        <div class="sect" style="margin-top:6px"><h3>Demand map</h3><span>Learned from order history</span></div>
+        <div class="mapwrap">
+          <svg viewBox="0 0 360 260" xmlns="http://www.w3.org/2000/svg" aria-label="Demand heat map of Williams Lake">
+            <rect width="360" height="260" fill="#101C16"/>
+            <path d="M0 205 Q60 185 120 202 Q180 220 240 208 Q310 195 360 214 L360 260 L0 260 Z" fill="#16283A"/>
+            <text x="150" y="242" font-size="10" fill="#3E5B77" font-style="italic" font-family="Georgia,serif">Williams Lake</text>
+            <path d="M-10 165 Q80 130 170 122 Q260 114 370 80" stroke="#233A2E" stroke-width="9" fill="none"/>
+            <path d="M120 0 Q130 60 150 123" stroke="#233A2E" stroke-width="6" fill="none"/>
+            <path d="M210 35 Q200 80 190 120 Q182 158 200 196" stroke="#233A2E" stroke-width="6" fill="none"/>
+            <!-- heat zones -->
+            <circle cx="160" cy="110" r="42" fill="rgba(248,113,113,.22)"/>
+            <circle cx="160" cy="110" r="20" fill="rgba(248,113,113,.30)"/>
+            <text x="160" y="113" text-anchor="middle" font-size="9" font-weight="700" fill="#FCA5A5" font-family="sans-serif">Downtown</text>
+            <circle cx="290" cy="135" r="36" fill="rgba(255,176,32,.20)"/>
+            <text x="290" y="138" text-anchor="middle" font-size="9" font-weight="700" fill="#FFD27A" font-family="sans-serif">Industrial Pk</text>
+            <circle cx="255" cy="75" r="26" fill="rgba(255,176,32,.16)"/>
+            <text x="255" y="78" text-anchor="middle" font-size="8.5" font-weight="700" fill="#FFD27A" font-family="sans-serif">Hospital</text>
+            <circle cx="80" cy="170" r="28" fill="rgba(96,165,250,.16)"/>
+            <text x="80" y="173" text-anchor="middle" font-size="8.5" font-weight="700" fill="#93C5FD" font-family="sans-serif">Stampede</text>
+            <!-- truck -->
+            <g transform="translate(160 110)"><circle r="12" fill="#1E4D3B" stroke="#FFB020" stroke-width="2.5"/><text y="4.5" text-anchor="middle" font-size="12">🚚</text></g>
+          </svg>
+        </div>
+        <div class="sect"><h3>Suggested stops today</h3><span>Mon, Jul 13</span></div>
+        <div class="stop now"><div class="time">NOW<br>9:00–11:00</div><div class="sn"><b>Downtown / Boitanio Mall</b><span>Morning coffee-run traffic · broadcast sent 9:12</span></div><div class="heat h-high">HIGH</div></div>
+        <div class="stop"><div class="time">11:30–1:00</div><div class="sn"><b>Hospital &amp; Western Ave</b><span>Lunch-break orders peak here Mon–Fri</span></div><div class="heat h-med">MED</div></div>
+        <div class="stop"><div class="time">3:00–4:30</div><div class="sn"><b>Industrial Park</b><span>Energy drinks + jerky · biggest avg orders ($31)</span></div><div class="heat h-high">HIGH</div></div>
+        <div class="stop"><div class="time">6:30–9:00</div><div class="sn"><b>Residential loop — Hodgson / Westridge</b><span>Movie-night bundles &amp; family orders</span></div><div class="heat h-med">MED</div></div>
+      </div>
+
+      <!-- ============ BROADCAST ============ -->
+      <div class="view" id="view-cast">
+        <div class="sect" style="margin-top:6px"><h3>Neighbourhood broadcast</h3><span>The demand engine</span></div>
+        <div class="bcard">
+          <label>Offer</label>
+          <div class="pillrow" id="offerPills">
+            <button class="pill on" onclick="pick(this,'offer')">Free delivery</button>
+            <button class="pill" onclick="pick(this,'offer')">20% off cold drinks</button>
+            <button class="pill" onclick="pick(this,'offer')">$3 off bundles</button>
+          </div>
+        </div>
+        <div class="bcard">
+          <label>Radius</label>
+          <div class="pillrow" id="radiusPills">
+            <button class="pill" onclick="pick(this,'radius')">1 km</button>
+            <button class="pill on" onclick="pick(this,'radius')">2 km</button>
+            <button class="pill" onclick="pick(this,'radius')">5 km</button>
+          </div>
+        </div>
+        <div class="bcard">
+          <label>Window</label>
+          <div class="pillrow" id="windowPills">
+            <button class="pill" onclick="pick(this,'window')">15 min</button>
+            <button class="pill on" onclick="pick(this,'window')">30 min</button>
+            <button class="pill" onclick="pick(this,'window')">60 min</button>
+          </div>
+          <div class="preview">
+            <div class="plabel">Customers will see</div>
+            <div class="pnotif"><span style="font-size:18px">🚚</span><div><b>CaribooDash is in your neighbourhood!</b><span id="previewText">Free delivery within 2 km for the next 30 min — parked near Boitanio Mall.</span></div></div>
+          </div>
+          <button class="sendbtn" onclick="sendCast()">📣 Send to nearby customers</button>
+          <div class="reach">Estimated reach: <b id="reachN">83</b> app users in radius</div>
+        </div>
+      </div>
+
+      <!-- ============ STATS ============ -->
+      <div class="view" id="view-stats">
+        <div class="bigrev" style="margin-top:6px">
+          <span>Revenue · today so far</span>
+          <b id="bigRev">$247.90</b>
+          <p>11 orders · $22.45 avg · 41 km driven · margin est. 38%</p>
+        </div>
+        <div class="sect"><h3>Orders by hour</h3><span>Today</span></div>
+        <div class="bars">
+          <div class="bar" style="height:22%"></div><div class="bar" style="height:45%"></div><div class="bar hot" style="height:78%"></div><div class="bar" style="height:52%"></div><div class="bar" style="height:30%"></div><div class="bar" style="height:38%"></div><div class="bar hot" style="height:92%"></div><div class="bar" style="height:60%"></div>
+        </div>
+        <div class="barlabels"><span>9a</span><span>10a</span><span>11a</span><span>12p</span><span>1p</span><span>2p</span><span>3p</span><span>4p</span></div>
+        <div class="sect"><h3>Top sellers this week</h3></div>
+        <div class="topseller"><div class="rank">1</div><div class="tn">⚡ Monster Ultra</div><div class="tv">64 sold · $255</div></div>
+        <div class="topseller"><div class="rank">2</div><div class="tn">🥔 Old Dutch Ripple</div><div class="tv">51 sold · $254</div></div>
+        <div class="topseller"><div class="rank">3</div><div class="tn">🍫 KitKat</div><div class="tv">47 sold · $117</div></div>
+        <div class="topseller"><div class="rank">4</div><div class="tn">🥩 Beef Jerky</div><div class="tv">29 sold · $260</div></div>
+        <div class="topseller"><div class="rank">5</div><div class="tn">🥤 Coca-Cola (cold)</div><div class="tv">28 sold · $83</div></div>
+        <div class="sect"><h3>Restock suggestions</h3><span>AI · demand model</span></div>
+        <div class="invrow"><div class="ie">⚡</div><div class="in"><b>Monster Ultra</b><span>Sells out by 2 PM on weekdays — load 24 more</span></div><div class="invqty low">+24</div></div>
+        <div class="invrow"><div class="ie">🍿</div><div class="in"><b>Movie Night bundles</b><span>Friday demand ×3 — pre-pack 12 for tonight</span></div><div class="invqty ok">+12</div></div>
+      </div>
+
+    </div>
+
+    <!-- nav -->
+    <div class="nav">
+      <button class="navbtn on" data-v="orders" onclick="go('orders')"><span class="ni">🧾</span>Orders<span class="ordercount" id="orderBadge">2</span></button>
+      <button class="navbtn" data-v="inv" onclick="go('inv')"><span class="ni">📦</span>Inventory</button>
+      <button class="navbtn" data-v="route" onclick="go('route')"><span class="ni">🗺️</span>Route</button>
+      <button class="navbtn" data-v="cast" onclick="go('cast')"><span class="ni">📣</span>Broadcast</button>
+      <button class="navbtn" data-v="stats" onclick="go('stats')"><span class="ni">📊</span>Stats</button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- scanner overlay -->
+    <div class="scanner" id="scanner">
+      <div class="scanframe"><div class="barcode">| || |||</div><div class="scanline"></div></div>
+      <h3>Scan to load</h3>
+      <p>Point at any barcode while loading the vehicle — inventory updates instantly and customers see the new stock.</p>
+      <div class="scanresult" id="scanResult">✓ <b id="scanName">Monster Ultra</b> — stock <b id="scanQty">+12</b></div>
+      <button class="close" onclick="closeScanner()">Done loading</button>
+    </div>
+
+  </div></div>
+</div>
+
+<script>
+/* ---------- orders ---------- */
+let orders = [
+ {id:"WL-1042", cust:"Jamie T.", addr:"214 Western Ave · 1.3 km", items:"2× Doritos · 2× Coke ❄ <span class='cold'>COLD</span> · KitKat · Sour Patch", total:31.47, status:"route"},
+ {id:"WL-1041", cust:"Priya S.", addr:"Hodgson Rd · 2.1 km", items:"Worksite Pack · 2× Monster ❄ <span class='cold'>COLD</span>", total:57.97, status:"new"},
+ {id:"WL-1040", cust:"Mike D.", addr:"11th Ave N · 0.6 km", items:"Toilet paper · AA batteries · Old Dutch", total:17.97, status:"new"},
+ {id:"WL-1039", cust:"Colleen R.", addr:"Pigeon Ave · 1.9 km", items:"Sick Day Pack · Ginger Ale ❄", total:27.98, status:"done"},
+ {id:"WL-1038", cust:"Dev K.", addr:"Midnight Dr · 3.2 km", items:"Movie Night Pack · extra Skittles", total:24.28, status:"done"},
+];
+const STLABEL = {new:["st-new","NEW"], route:["st-route","EN ROUTE"], done:["st-done","DELIVERED"]};
+function renderOrders(){
+  const list = document.getElementById("orderList");
+  const open = orders.filter(o=>o.status!=="done").length;
+  document.getElementById("queueCount").textContent = open+" open · "+orders.filter(o=>o.status==="done").length+" delivered";
+  const badge = document.getElementById("orderBadge");
+  const newN = orders.filter(o=>o.status==="new").length;
+  badge.style.display = newN? "flex":"none"; badge.textContent=newN;
+  list.innerHTML = orders.map(o=>{
+    const [cls,lbl] = STLABEL[o.status];
+    let btn = "";
+    if(o.status==="new") btn = `<button class="obtn accept" onclick="advance('${o.id}')">Accept</button>`;
+    else if(o.status==="route") btn = `<button class="obtn deliver" onclick="advance('${o.id}')">Mark delivered</button>`;
+    else btn = `<button class="obtn done">✓ Done</button>`;
+    return `<div class="order ${o.status==='new'?'new':''}">
+      <div class="ohead"><span class="oid">#${o.id}</span><span class="ostatus ${cls}">${lbl}</span></div>
+      <div class="ocust">${o.cust}</div><div class="oaddr">📍 ${o.addr}</div>
+      <div class="oitems">${o.items}</div>
+      <div class="ofoot"><div><div class="ototal">$${o.total.toFixed(2)}</div><div class="odist">route optimized · +4 min</div></div>${btn}</div>
+    </div>`;
+  }).join("");
+}
+function advance(id){
+  const o = orders.find(x=>x.id===id);
+  if(o.status==="new"){ o.status="route"; toast("Accepted — added to route"); }
+  else if(o.status==="route"){ o.status="done"; bumpStats(o.total); toast("Delivered ✓ Customer notified"); }
+  renderOrders();
+}
+let todayOrders=11, todayRev=247.90;
+function bumpStats(amt){
+  todayOrders++; todayRev+=amt;
+  document.getElementById("tOrders").textContent=todayOrders;
+  document.getElementById("tRev").textContent="$"+Math.round(todayRev);
+  const br=document.getElementById("bigRev"); if(br) br.textContent="$"+todayRev.toFixed(2);
+}
+/* live incoming order simulation */
+const NAMES=["Sam W.","Dana L.","Chris B.","Alexis M.","Rob F."];
+const ADDRS=["Mackenzie Ave · 1.1 km","Carson Dr · 2.4 km","Toop Rd · 3.0 km","Eagle Cres · 1.7 km"];
+const ITEMS=["Lays Classic · 2× Coke ❄ <span class='cold'>COLD</span>","Beef jerky · Red Bull ❄ · Trail mix","Dog treats · Kleenex · KitKat","3× Monster ❄ <span class='cold'>COLD</span> · protein bars"];
+let nextId=1043;
+setInterval(()=>{
+  orders.unshift({id:"WL-"+(nextId++), cust:NAMES[Math.floor(Math.random()*NAMES.length)], addr:ADDRS[Math.floor(Math.random()*ADDRS.length)], items:ITEMS[Math.floor(Math.random()*ITEMS.length)], total:12+Math.random()*38, status:"new"});
+  if(orders.length>7) orders.pop();
+  renderOrders(); toast("🔔 New order received");
+},25000);
+
+/* ---------- inventory ---------- */
+let inv = [
+ {e:"⚡",n:"Monster Ultra",sku:"SKU 0113 · $3.99",q:4,max:48},
+ {e:"🥔",n:"Miss Vickie's S&V",sku:"SKU 0207 · $5.29",q:3,max:24},
+ {e:"💊",n:"Ibuprofen 24s",sku:"SKU 0801 · $7.49",q:4,max:12},
+ {e:"🔌",n:"USB-C Cable",sku:"SKU 0805 · $12.99",q:5,max:10},
+ {e:"🍫",n:"KitKat",sku:"SKU 0101 · $2.49",q:28,max:48},
+ {e:"🍫",n:"Coffee Crisp",sku:"SKU 0102 · $2.49",q:19,max:48},
+ {e:"🥔",n:"Old Dutch Ripple",sku:"SKU 0205 · $4.99",q:11,max:24},
+ {e:"🥤",n:"Coca-Cola 500mL",sku:"SKU 0301 · $2.99 · ❄",q:22,max:36},
+ {e:"🥩",n:"Beef Jerky",sku:"SKU 0501 · $8.99",q:10,max:20},
+ {e:"🧻",n:"Toilet Paper 4pk",sku:"SKU 0803 · $5.99",q:8,max:12},
+ {e:"🦴",n:"Dog Treats",sku:"SKU 0901 · $6.99",q:9,max:15},
+ {e:"💧",n:"Spring Water 1L",sku:"SKU 0304 · $2.29",q:30,max:36},
+];
+let invQuery="";
+function invFilter(v){ invQuery=v.toLowerCase(); renderInv(); }
+function renderInv(){
+  const rows = inv.filter(i=>i.n.toLowerCase().includes(invQuery));
+  document.getElementById("invTotal").textContent = inv.reduce((a,i)=>a+i.q,0)+" units · "+inv.length+" SKUs shown";
+  document.getElementById("invList").innerHTML = rows.map(i=>{
+    const pct = Math.min(100, i.q/i.max*100);
+    const col = i.q<=5? "var(--red)" : pct<40? "var(--cheddar)" : "var(--green)";
+    return `<div class="invrow"><div class="ie">${i.e}</div>
+      <div class="in"><b>${i.n}</b><span>${i.sku}</span><div class="stockbar"><i style="width:${pct}%;background:${col}"></i></div></div>
+      <div class="invqty ${i.q<=5?'low':'ok'}">${i.q}</div></div>`;
+  }).join("");
+}
+
+/* ---------- scanner ---------- */
+let scanTimer;
+function openScanner(){
+  document.getElementById("scanner").classList.add("show");
+  document.getElementById("scanResult").classList.remove("show");
+  scanTimer = setTimeout(doScan, 1800);
+}
+function doScan(){
+  const low = inv.filter(i=>i.q<=5);
+  const item = low.length? low[0] : inv[Math.floor(Math.random()*inv.length)];
+  const addN = Math.min(item.max-item.q, 12);
+  item.q += addN;
+  document.getElementById("scanName").textContent = item.n;
+  document.getElementById("scanQty").textContent = "+"+addN+" → "+item.q+" on board";
+  document.getElementById("scanResult").classList.add("show");
+  renderInv();
+  scanTimer = setTimeout(doScan, 2600);
+}
+function closeScanner(){
+  clearTimeout(scanTimer);
+  document.getElementById("scanner").classList.remove("show");
+  toast("Inventory synced — customers see new stock");
+}
+
+/* ---------- broadcast ---------- */
+const picks = {offer:"Free delivery", radius:"2 km", window:"30 min"};
+function pick(btn, group){
+  btn.parentElement.querySelectorAll(".pill").forEach(p=>p.classList.remove("on"));
+  btn.classList.add("on");
+  picks[group]=btn.textContent;
+  const reachMap = {"1 km":41,"2 km":83,"5 km":176};
+  document.getElementById("reachN").textContent = reachMap[picks.radius];
+  document.getElementById("previewText").textContent =
+    `${picks.offer} within ${picks.radius} for the next ${picks.window} — parked near Boitanio Mall.`;
+}
+function sendCast(){
+  toast("📣 Broadcast sent to "+document.getElementById("reachN").textContent+" customers");
+  setTimeout(()=>toast("🔔 New order received"),6000);
+  setTimeout(()=>{
+    orders.unshift({id:"WL-"+(nextId++), cust:"Broadcast · Taylor N.", addr:"Boitanio area · 0.4 km", items:"2× Cold Coke ❄ <span class='cold'>COLD</span> · Doritos · Skittles", total:15.45, status:"new"});
+    renderOrders();
+  },6000);
+}
+
+/* ---------- nav / toast ---------- */
+function go(v){
+  document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
+  document.getElementById("view-"+v).classList.add("active");
+  document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  document.getElementById("content").scrollTop=0;
+}
+let toastT;
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),2200);
+}
+renderOrders(); renderInv();
+</script>
+</body>
+</html>
