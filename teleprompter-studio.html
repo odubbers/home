@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Teleprompter &amp; Backlight Studio</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root { color-scheme: dark; }
+  html,body { height:100%; margin:0; overflow:hidden; background:#000; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+  /* Stage */
+  #stage { position:fixed; inset:0; overflow:hidden; background:#000; }
+  #backlight { position:absolute; inset:0; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; z-index:1; transition:opacity .15s linear; }
+  .quad { width:100%; height:100%; }
+
+  /* Obstruction + textbox generic */
+  .movable { position:absolute; z-index:20; box-sizing:border-box; will-change:transform; touch-action:none; }
+  .obstruction { background:#000000; z-index:15; }
+  #phone { border-radius:22px; }
+  #pole { border-radius:6px; }
+
+  /* Selection chrome (setup only) */
+  .movable .frame { position:absolute; inset:0; border:1.5px dashed rgba(96,165,250,.9); border-radius:inherit; pointer-events:none; }
+  .obstruction .frame { border-style:solid; border-color:rgba(96,165,250,.55); }
+  .handle { position:absolute; width:14px; height:14px; background:#0f172a; border:2px solid #60a5fa; border-radius:3px; z-index:5; }
+  .handle.round { border-radius:50%; }
+  .h-nw{top:-7px;left:-7px;cursor:nwse-resize} .h-ne{top:-7px;right:-7px;cursor:nesw-resize}
+  .h-se{bottom:-7px;right:-7px;cursor:nwse-resize} .h-sw{bottom:-7px;left:-7px;cursor:nesw-resize}
+  .h-n{top:-7px;left:50%;margin-left:-7px;cursor:ns-resize} .h-s{bottom:-7px;left:50%;margin-left:-7px;cursor:ns-resize}
+  .h-e{right:-7px;top:50%;margin-top:-7px;cursor:ew-resize} .h-w{left:-7px;top:50%;margin-top:-7px;cursor:ew-resize}
+  .h-rot{ top:-38px; left:50%; margin-left:-8px; width:16px; height:16px; cursor:grab; background:#22c55e; border-color:#bbf7d0; border-radius:50%; }
+  .rot-stem{ position:absolute; top:-24px; left:50%; width:2px; height:24px; margin-left:-1px; background:rgba(96,165,250,.6); pointer-events:none; }
+  .movable .label { position:absolute; top:-22px; left:0; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#93c5fd; background:rgba(2,6,23,.85); padding:1px 6px; border-radius:4px; pointer-events:none; white-space:nowrap; }
+
+  /* Phone graphic (setup guide) */
+  .phone-guide { position:absolute; inset:6px; border:1px solid #1f2937; border-radius:16px; pointer-events:none; }
+  .cam-bump { position:absolute; top:8px; left:8px; width:34px; height:52px; border:1px solid #2b3648; border-radius:10px; background:#0a0a0a; }
+  .cam-bump.right { left:auto; right:8px; }
+  .lens { position:absolute; width:34px; height:34px; border-radius:50%; border:2px solid #3b4a63; box-shadow:0 0 0 4px rgba(59,74,99,.25); transform:translate(-50%,-50%); pointer-events:none; }
+  .lens::after { content:""; position:absolute; inset:8px; border-radius:50%; border:1px solid #2b3648; }
+  .lens::before { content:""; position:absolute; left:50%; top:50%; width:12px; height:1px; background:#3b4a63; transform:translate(-50%,-50%); box-shadow:0 0 0 0 #3b4a63; }
+  .lens-cross-v { position:absolute; left:50%; top:50%; width:1px; height:12px; background:#3b4a63; transform:translate(-50%,-50%); }
+
+  /* Textbox */
+  #textbox { z-index:25; background:transparent; }
+  #textbox .tp-scroll {
+    position:absolute; inset:0; overflow-y:auto; overflow-x:hidden;
+    scrollbar-width:none; -ms-overflow-style:none; border-radius:10px;
+  }
+  #textbox .tp-scroll::-webkit-scrollbar { display:none; width:0; height:0; }
+  #textbox .tp-content { padding:60vh 22px; color:#ffffff; font-weight:600; text-shadow:0 2px 10px rgba(0,0,0,.85); white-space:pre-wrap; word-break:break-word; }
+  #textbox .tp-bg { position:absolute; inset:0; border-radius:10px; background:rgba(0,0,0,var(--tp-bg,0.35)); pointer-events:none; }
+
+  /* Live mode: strip all setup chrome */
+  body.live .setup-only { display:none !important; }
+  body.live .frame, body.live .handle, body.live .rot-stem, body.live .label,
+  body.live .phone-guide { display:none !important; }
+  body.live #textbox .tp-scroll { border-radius:0; }
+  body.live { cursor:none; }
+  body.live.show-cursor { cursor:default; }
+
+  /* Sidebar */
+  #sidebar { z-index:60; width:340px; }
+  #sidebar.collapsed { transform:translateX(-100%); }
+  .field-label { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#94a3b8; }
+  input[type="range"]{ width:100%; accent-color:#60a5fa; }
+  .seg { display:flex; gap:4px; }
+  .seg button { flex:1; }
+  .btn { border:1px solid #334155; border-radius:8px; background:#1e293b; color:#e2e8f0; padding:6px 10px; font-size:13px; }
+  .btn:hover{ background:#334155; }
+  .btn.active{ background:#2563eb; border-color:#3b82f6; color:#fff; }
+  .btn.primary{ background:#16a34a; border-color:#22c55e; color:#fff; font-weight:600; }
+  .btn.primary:hover{ background:#15803d; }
+  .btn.danger{ background:#7f1d1d; border-color:#b91c1c; }
+  .btn.danger:hover{ background:#991b1b; }
+  .card { background:#0f172a; border:1px solid #1e293b; border-radius:12px; }
+  select, input[type="text"], input[type="number"], textarea {
+    background:#0b1220; border:1px solid #334155; border-radius:8px; color:#e2e8f0; padding:6px 8px; font-size:13px; width:100%;
+  }
+  input[type="color"]{ width:100%; height:34px; border:1px solid #334155; border-radius:8px; background:#0b1220; padding:2px; }
+  .disabledZone{ opacity:.35; pointer-events:none; }
+  details>summary{ cursor:pointer; list-style:none; }
+  details>summary::-webkit-details-marker{ display:none; }
+  .chev{ transition:transform .15s; }
+  details[open] .chev{ transform:rotate(90deg); }
+  #liveHint{ z-index:80; transition:opacity .4s; }
+  .scrollpane{ scrollbar-width:thin; scrollbar-color:#334155 transparent; }
+  .scrollpane::-webkit-scrollbar{ width:8px; } .scrollpane::-webkit-scrollbar-thumb{ background:#334155; border-radius:8px; }
+</style>
+</head>
+<body class="text-slate-200">
+
+<!-- ============ STAGE ============ -->
+<div id="stage">
+  <div id="backlight">
+    <div class="quad" data-quad="0"></div>
+    <div class="quad" data-quad="1"></div>
+    <div class="quad" data-quad="2"></div>
+    <div class="quad" data-quad="3"></div>
+  </div>
+
+  <!-- Pole -->
+  <div id="pole" class="movable obstruction">
+    <span class="label setup-only">Pole</span>
+    <div class="frame setup-only"></div>
+  </div>
+
+  <!-- Phone -->
+  <div id="phone" class="movable obstruction">
+    <span class="label setup-only">Phone</span>
+    <div class="phone-guide setup-only">
+      <div class="cam-bump" id="camBump"></div>
+      <div class="lens" id="lensMarker"><span class="lens-cross-v"></span></div>
+    </div>
+    <div class="frame setup-only"></div>
+  </div>
+
+  <!-- Teleprompter text box -->
+  <div id="textbox" class="movable">
+    <div class="tp-bg"></div>
+    <div class="tp-scroll" id="tpScroll"><div class="tp-content" id="tpContent"></div></div>
+    <span class="label setup-only">Script</span>
+    <div class="frame setup-only"></div>
+  </div>
+</div>
+
+<!-- ============ TOP CONTROLS (setup) ============ -->
+<div class="setup-only" style="position:fixed;top:12px;right:12px;z-index:70;display:flex;gap:8px;">
+  <button id="alignBtn" class="btn" title="Move the script box next to the camera lens">Align text to lens</button>
+  <button id="startBtn" class="btn primary">▶ Start Teleprompter</button>
+</div>
+
+<button id="collapseBtn" class="setup-only btn" style="position:fixed;top:12px;left:12px;z-index:70;">☰ Panel</button>
+
+<!-- ============ LIVE HINT ============ -->
+<div id="liveHint" class="hidden" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(2,6,23,.7);color:#cbd5e1;font-size:12px;padding:6px 14px;border-radius:999px;border:1px solid #1e293b;">
+  Esc or double-click to exit &nbsp;•&nbsp; Space play/pause &nbsp;•&nbsp; ↑/↓ speed
+</div>
+
+<!-- ============ SIDEBAR ============ -->
+<aside id="sidebar" class="setup-only card scrollpane" style="position:fixed;top:0;left:0;height:100%;overflow-y:auto;padding:16px;border-radius:0;border-right:1px solid #1e293b;background:#0b1220;transition:transform .2s ease;">
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <h1 class="text-base font-bold text-white leading-tight">Teleprompter Studio</h1>
+      <p class="text-[11px] text-slate-500">Backlight • Eye-line • Scripts</p>
+    </div>
+    <button id="hideSidebar" class="btn" title="Collapse">✕</button>
+  </div>
+
+  <!-- SCRIPT -->
+  <details open class="card p-3 mb-3">
+    <summary class="flex items-center justify-between">
+      <span class="font-semibold text-sm">Script</span><span class="chev text-slate-500">▸</span>
+    </summary>
+    <div class="mt-3 space-y-2">
+      <textarea id="scriptInput" rows="6" placeholder="Paste your script here…" class="scrollpane"></textarea>
+
+      <div class="field-label mt-1">Saved scripts</div>
+      <div class="flex gap-2">
+        <select id="scriptSelect"><option value="">— Select a saved script —</option></select>
+      </div>
+      <div class="seg">
+        <button id="loadScript" class="btn">Load</button>
+        <button id="deleteScript" class="btn danger">Delete</button>
+      </div>
+
+      <div class="field-label mt-2">Save current script as</div>
+      <div class="flex gap-2">
+        <input id="scriptName" type="text" placeholder="e.g. Intro – Ep. 12" />
+        <button id="saveScript" class="btn primary whitespace-nowrap">Save</button>
+      </div>
+    </div>
+  </details>
+
+  <!-- TEXT STYLE -->
+  <details open class="card p-3 mb-3">
+    <summary class="flex items-center justify-between">
+      <span class="font-semibold text-sm">Text &amp; Scroll</span><span class="chev text-slate-500">▸</span>
+    </summary>
+    <div class="mt-3 space-y-3">
+      <div>
+        <div class="flex justify-between field-label"><span>Font size</span><span id="fontVal">44px</span></div>
+        <input type="range" id="fontSize" min="16" max="96" step="1" value="44" />
+      </div>
+      <div>
+        <div class="flex justify-between field-label"><span>Line height</span><span id="lhVal">1.4</span></div>
+        <input type="range" id="lineHeight" min="1" max="2.6" step="0.05" value="1.4" />
+      </div>
+      <div>
+        <div class="field-label mb-1">Alignment</div>
+        <div class="seg">
+          <button class="btn align-btn" data-align="left">Left</button>
+          <button class="btn align-btn active" data-align="center">Center</button>
+          <button class="btn align-btn" data-align="right">Right</button>
+        </div>
+      </div>
+      <div>
+        <div class="flex justify-between field-label"><span>Text panel dim</span><span id="bgVal">35%</span></div>
+        <input type="range" id="tpBg" min="0" max="90" step="1" value="35" />
+      </div>
+
+      <hr class="border-slate-800" />
+
+      <label class="flex items-center justify-between">
+        <span class="text-sm">Auto-scroll</span>
+        <input type="checkbox" id="autoScroll" class="w-4 h-4 accent-emerald-500" />
+      </label>
+      <div>
+        <div class="flex justify-between field-label"><span>Scroll speed</span><span id="speedVal">60</span></div>
+        <input type="range" id="scrollSpeed" min="1" max="100" step="1" value="60" />
+      </div>
+      <div>
+        <div class="field-label mb-1">Control scheme</div>
+        <select id="scheme">
+          <option value="A">A — Keyboard (Space, ↑/↓)</option>
+          <option value="B">B — Mouse wheel (middle-click resumes)</option>
+          <option value="C">C — Hover zones (top/center/bottom)</option>
+        </select>
+        <p id="schemeHelp" class="text-[11px] text-slate-500 mt-1"></p>
+      </div>
+      <button id="rewindBtn" class="btn w-full">⟲ Rewind to top</button>
+    </div>
+  </details>
+
+  <!-- OBSTRUCTIONS -->
+  <details open class="card p-3 mb-3">
+    <summary class="flex items-center justify-between">
+      <span class="font-semibold text-sm">Gear Blockout</span><span class="chev text-slate-500">▸</span>
+    </summary>
+    <div class="mt-3 space-y-3">
+      <p class="text-[11px] text-slate-500">Drag the black shapes to cover your phone &amp; pole. Corner/edge handles resize; green knob rotates.</p>
+      <div>
+        <div class="field-label mb-1">Camera lens position</div>
+        <select id="lensPos">
+          <option value="center-top">Center-Top</option>
+          <option value="top-left">Top-Left</option>
+          <option value="top-right">Top-Right</option>
+          <option value="center-bottom">Center-Bottom</option>
+        </select>
+      </div>
+      <div class="seg">
+        <button id="resetPole" class="btn">Reset pole</button>
+        <button id="resetPhone" class="btn">Reset phone</button>
+      </div>
+    </div>
+  </details>
+
+  <!-- BACKLIGHT -->
+  <details open class="card p-3 mb-3">
+    <summary class="flex items-center justify-between">
+      <span class="font-semibold text-sm">Quad Backlight</span><span class="chev text-slate-500">▸</span>
+    </summary>
+    <div class="mt-3 space-y-3">
+      <div>
+        <div class="field-label mb-1">Zone layout</div>
+        <select id="blLayout">
+          <option value="1">1 colour (whole screen)</option>
+          <option value="2v">2 colour (left / right)</option>
+          <option value="2h">2 colour (top / bottom)</option>
+          <option value="4">4 colour (independent)</option>
+        </select>
+      </div>
+      <div>
+        <div class="flex justify-between field-label"><span>Intensity</span><span id="intVal">70%</span></div>
+        <input type="range" id="intensity" min="0" max="100" step="1" value="70" />
+      </div>
+      <div id="quadControls" class="grid grid-cols-2 gap-2"></div>
+    </div>
+  </details>
+
+  <!-- PROFILES -->
+  <details open class="card p-3 mb-6">
+    <summary class="flex items-center justify-between">
+      <span class="font-semibold text-sm">Profiles (layout)</span><span class="chev text-slate-500">▸</span>
+    </summary>
+    <div class="mt-3 space-y-2">
+      <p class="text-[11px] text-slate-500">Saves gear positions, text box, fonts, scroll &amp; colours — not the script text (scripts save separately above).</p>
+      <select id="profileSelect"><option value="">— Select a profile —</option></select>
+      <div class="seg">
+        <button id="loadProfile" class="btn">Load</button>
+        <button id="deleteProfile" class="btn danger">Delete</button>
+      </div>
+      <div class="flex gap-2">
+        <input id="profileName" type="text" placeholder="Profile name…" />
+        <button id="saveProfile" class="btn primary whitespace-nowrap">Save</button>
+      </div>
+    </div>
+  </details>
+</aside>
+
+<script>
+"use strict";
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const PRESETS = {
+  "Daylight 5600K":"#eaf1ff",
+  "Soft White 4300K":"#fff2e0",
+  "Warm 3200K":"#ffc79a",
+  "RGB Magenta":"#ff2bd6",
+  "RGB Cyan":"#22e6ff",
+  "RGB Green":"#37ff7a",
+  "RGB Blue":"#2b6bff",
+  "RGB Red":"#ff3b3b",
+  "Off (Black)":"#000000"
+};
+
+function defaultState(){
+  const W = window.innerWidth, H = window.innerHeight, cx = W/2;
+  const poleW = 46, poleH = Math.round(H*0.55);
+  const phW = 156, phH = 320;
+  const tbW = Math.min(560, W-120), tbH = 220;
+  return {
+    pole:  { x: cx-poleW/2, y: Math.round(H*0.42), w: poleW, h: poleH, rot: 0 },
+    phone: { x: cx-phW/2,   y: Math.round(H*0.07), w: phW,  h: phH,  rot: 0 },
+    textbox:{ x: cx-tbW/2,  y: Math.round(H*0.45), w: tbW,  h: tbH,  rot: 0 },
+    lensPos: "center-top",
+    font: { size:44, lineHeight:1.4, align:"center", bgDim:35 },
+    scroll:{ auto:false, speed:60, scheme:"A" },
+    backlight:{ intensity:70, layout:"1", quads:["#eaf1ff","#eaf1ff","#eaf1ff","#eaf1ff"] }
+  };
+}
+
+let S = defaultState();
+let scriptText = "";                 // current script in the reader
+let paused = false;                  // runtime pause flag (auto-scroll)
+let liveMode = false;
+
+const LS = {
+  profiles:"tp_profiles_v1",
+  scripts:"tp_scripts_v1",
+  last:"tp_last_v1"
+};
+
+/* ============================================================
+   DOM HELPERS
+   ============================================================ */
+const $ = (s,root=document)=>root.querySelector(s);
+const $$ = (s,root=document)=>Array.from(root.querySelectorAll(s));
+const stage = $("#stage");
+const els = { pole:$("#pole"), phone:$("#phone"), textbox:$("#textbox") };
+const tpScroll = $("#tpScroll");
+const tpContent = $("#tpContent");
+
+function rotatePoint(x,y,deg){
+  const r = deg*Math.PI/180, c=Math.cos(r), s=Math.sin(r);
+  return { x: x*c - y*s, y: x*s + y*c };
+}
+function clamp(v,min){ return v<min?min:v; }
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function renderMovable(el, m){
+  el.style.left = m.x+"px";
+  el.style.top = m.y+"px";
+  el.style.width = m.w+"px";
+  el.style.height = m.h+"px";
+  el.style.transform = "rotate("+(m.rot||0)+"deg)";
+  el.style.transformOrigin = "center center";
+}
+
+function renderBacklight(){
+  const bl = $("#backlight");
+  bl.style.opacity = (S.backlight.intensity/100).toString();
+  const cols = effectiveQuadColors();
+  $$(".quad").forEach((q,i)=> q.style.background = cols[i]);
+}
+
+function effectiveQuadColors(){
+  const q = S.backlight.quads;
+  switch(S.backlight.layout){
+    case "1":  return [q[0],q[0],q[0],q[0]];
+    case "2v": return [q[0],q[1],q[0],q[1]];   // left / right
+    case "2h": return [q[0],q[0],q[2],q[2]];   // top / bottom
+    default:   return [q[0],q[1],q[2],q[3]];
+  }
+}
+
+function renderText(){
+  tpContent.style.fontSize = S.font.size+"px";
+  tpContent.style.lineHeight = S.font.lineHeight;
+  tpContent.style.textAlign = S.font.align;
+  $("#textbox").style.setProperty("--tp-bg", (S.font.bgDim/100).toString());
+  tpContent.textContent = scriptText || "Your script will appear here. Paste text in the sidebar, or load a saved script.";
+}
+
+function lensLocalFraction(pos){
+  switch(pos){
+    case "top-left":     return { fx:0.28, fy:0.16 };
+    case "top-right":    return { fx:0.72, fy:0.16 };
+    case "center-bottom":return { fx:0.50, fy:0.84 };
+    default:             return { fx:0.50, fy:0.16 }; // center-top
+  }
+}
+
+function renderLensMarker(){
+  const {fx,fy} = lensLocalFraction(S.lensPos);
+  const lm = $("#lensMarker");
+  lm.style.left = (fx*100)+"%";
+  lm.style.top = (fy*100)+"%";
+  const bump = $("#camBump");
+  bump.classList.toggle("right", S.lensPos==="top-right");
+}
+
+function renderAll(){
+  renderMovable(els.pole, S.pole);
+  renderMovable(els.phone, S.phone);
+  renderMovable(els.textbox, S.textbox);
+  renderBacklight();
+  renderText();
+  renderLensMarker();
+}
+
+/* ============================================================
+   INTERACTION: drag / resize / rotate (rotation-aware)
+   ============================================================ */
+function stageXY(e){
+  const r = stage.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+function buildHandles(el, opts){
+  const frag = document.createDocumentFragment();
+  if(opts.resize){
+    ["nw","ne","se","sw","n","e","s","w"].forEach(dir=>{
+      const h = document.createElement("div");
+      h.className = "handle setup-only h-"+dir;
+      h.dataset.resize = dir;
+      frag.appendChild(h);
+    });
+  }
+  if(opts.rotate){
+    const stem = document.createElement("div"); stem.className="rot-stem setup-only"; frag.appendChild(stem);
+    const rh = document.createElement("div"); rh.className="handle setup-only h-rot"; rh.dataset.rotate="1"; frag.appendChild(rh);
+  }
+  el.appendChild(frag);
+}
+
+const RESIZE_VEC = {
+  nw:[-1,-1], ne:[1,-1], se:[1,1], sw:[-1,1],
+  n:[0,-1], s:[0,1], e:[1,0], w:[-1,0]
+};
+
+function makeInteractive(el, key, opts){
+  opts = Object.assign({ resize:true, rotate:false, minW:20, minH:20 }, opts||{});
+  buildHandles(el, opts);
+
+  let mode=null, start=null;
+
+  el.addEventListener("pointerdown", (e)=>{
+    if(liveMode) return;
+    const m = S[key];
+    const t = e.target;
+    const p = stageXY(e);
+
+    if(t.dataset && t.dataset.rotate){
+      mode="rotate";
+      start = { p };
+      e.stopPropagation();
+    } else if(t.dataset && t.dataset.resize){
+      const dir = t.dataset.resize;
+      const [hx,hy] = RESIZE_VEC[dir];
+      // fixed anchor = opposite side, computed in stage coords at start
+      const cx0 = m.x + m.w/2, cy0 = m.y + m.h/2;
+      const anchorLocal = { x:-hx*m.w/2, y:-hy*m.h/2 };
+      const ar = rotatePoint(anchorLocal.x, anchorLocal.y, m.rot);
+      const anchor = { x: cx0+ar.x, y: cy0+ar.y };
+      mode="resize";
+      start = { hx, hy, anchor, rot:m.rot };
+      e.stopPropagation();
+    } else {
+      mode="drag";
+      start = { p, ox:m.x, oy:m.y };
+    }
+    el.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  el.addEventListener("pointermove", (e)=>{
+    if(!mode) return;
+    const m = S[key];
+    const p = stageXY(e);
+
+    if(mode==="drag"){
+      m.x = start.ox + (p.x - start.p.x);
+      m.y = start.oy + (p.y - start.p.y);
+    } else if(mode==="rotate"){
+      const cx = m.x + m.w/2, cy = m.y + m.h/2;
+      let deg = Math.atan2(p.y-cy, p.x-cx)*180/Math.PI + 90;
+      if(e.shiftKey) deg = Math.round(deg/15)*15;
+      m.rot = deg;
+    } else if(mode==="resize"){
+      const { hx, hy, anchor, rot } = start;
+      const d = { x:p.x-anchor.x, y:p.y-anchor.y };
+      const dl = rotatePoint(d.x, d.y, -rot);       // into element local frame
+      const newW = hx!==0 ? clamp(Math.abs(dl.x), opts.minW) : m.w;
+      const newH = hy!==0 ? clamp(Math.abs(dl.y), opts.minH) : m.h;
+      const off = rotatePoint(hx*newW/2, hy*newH/2, rot);
+      const cx = anchor.x + off.x, cy = anchor.y + off.y;
+      m.w = newW; m.h = newH;
+      m.x = cx - newW/2; m.y = cy - newH/2;
+    }
+    renderMovable(el, m);
+    if(key==="phone") renderLensMarker();
+  });
+
+  const end = (e)=>{
+    if(!mode) return;
+    mode=null; start=null;
+    try{ el.releasePointerCapture(e.pointerId); }catch(_){}
+    saveLast();
+  };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+}
+
+/* ============================================================
+   ALIGN TEXT TO LENS
+   ============================================================ */
+function alignTextToLens(){
+  const ph = S.phone;
+  const {fx,fy} = lensLocalFraction(S.lensPos);
+  const cx = ph.x + ph.w/2, cy = ph.y + ph.h/2;
+  const localX = (fx-0.5)*ph.w, localY = (fy-0.5)*ph.h;
+  const r = rotatePoint(localX, localY, ph.rot);
+  const lensX = cx + r.x, lensY = cy + r.y;
+
+  const tb = S.textbox;
+  tb.rot = 0;
+  tb.x = Math.round(lensX - tb.w/2);
+  tb.y = Math.round(lensY + 26);         // sit just below the lens for tight eye-line
+  // keep on screen
+  tb.x = Math.max(8, Math.min(tb.x, window.innerWidth - tb.w - 8));
+  tb.y = Math.max(8, Math.min(tb.y, window.innerHeight - 80));
+  renderMovable(els.textbox, tb);
+  saveLast();
+}
+
+/* ============================================================
+   AUTO-SCROLL LOOP + CONTROL SCHEMES
+   ============================================================ */
+let lastTs = 0, acc = 0, hoverDir = 0; // hoverDir for scheme C: -1 up, 1 down, 0 pause
+
+function speedPx(){ return S.scroll.speed * 4; } // 1..100 -> 4..400 px/s
+
+function loop(ts){
+  const dt = lastTs ? (ts-lastTs)/1000 : 0;
+  lastTs = ts;
+  const scheme = S.scroll.scheme;
+  let dir = 0;
+
+  if(scheme==="C"){
+    if(liveModeOrPreview()) dir = hoverDir;   // hover controls scrolling directly
+  } else {
+    if(S.scroll.auto && !paused) dir = 1;
+  }
+
+  if(dir!==0 && dt>0){
+    acc += speedPx() * dt * dir;
+    const whole = acc>=0 ? Math.floor(acc) : Math.ceil(acc);
+    if(whole){ tpScroll.scrollTop += whole; acc -= whole; }
+  }
+  requestAnimationFrame(loop);
+}
+function liveModeOrPreview(){ return true; } // schemes are always active on the reader
+requestAnimationFrame(loop);
+
+/* Scheme B: wheel scrolls manually + pauses; middle-click resumes */
+tpScroll.addEventListener("wheel",(e)=>{
+  if(S.scroll.scheme!=="B") return;
+  paused = true;
+  tpScroll.scrollTop += e.deltaY;
+  e.preventDefault();
+},{passive:false});
+tpScroll.addEventListener("auxclick",(e)=>{
+  if(S.scroll.scheme!=="B") return;
+  if(e.button===1){ paused=false; S.scroll.auto=true; syncScrollUI(); }
+});
+document.addEventListener("mousedown",(e)=>{ if(e.button===1 && S.scroll.scheme==="B") e.preventDefault(); });
+
+/* Scheme C: hover zones over the text box */
+$("#textbox").addEventListener("mousemove",(e)=>{
+  if(S.scroll.scheme!=="C") return;
+  const r = tpScroll.getBoundingClientRect();
+  const rel = (e.clientY - r.top)/r.height;
+  hoverDir = rel < 0.34 ? -1 : rel > 0.66 ? 1 : 0;
+});
+$("#textbox").addEventListener("mouseleave",()=>{ hoverDir = 0; });
+
+/* Keyboard (scheme A) + global Escape */
+document.addEventListener("keydown",(e)=>{
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if(e.key==="Escape" && liveMode){ exitLive(); return; }
+  if(typing) return;
+
+  if(S.scroll.scheme==="A"){
+    if(e.code==="Space"){ e.preventDefault(); toggleScroll(); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); nudgeSpeed(4); }
+    else if(e.key==="ArrowDown"){ e.preventDefault(); nudgeSpeed(-4); }
+  }
+});
+
+function toggleScroll(){
+  if(S.scroll.scheme==="C") return; // hover-driven
+  S.scroll.auto = !S.scroll.auto;
+  paused = false;
+  syncScrollUI(); saveLast();
+}
+function nudgeSpeed(delta){
+  S.scroll.speed = Math.max(1, Math.min(100, S.scroll.speed+delta));
+  syncScrollUI(); saveLast();
+}
+function syncScrollUI(){
+  $("#autoScroll").checked = S.scroll.auto;
+  $("#scrollSpeed").value = S.scroll.speed;
+  $("#speedVal").textContent = S.scroll.speed;
+}
+
+/* ============================================================
+   LIVE MODE
+   ============================================================ */
+const liveHint = $("#liveHint");
+let hintTimer=null;
+function enterLive(){
+  liveMode = true;
+  document.body.classList.add("live");
+  liveHint.classList.remove("hidden");
+  flashHint();
+  if(S.scroll.scheme!=="C" && S.scroll.auto){ paused=false; }
+}
+function exitLive(){
+  liveMode = false;
+  document.body.classList.remove("live","show-cursor");
+  liveHint.classList.add("hidden");
+}
+function flashHint(){
+  liveHint.style.opacity="1";
+  clearTimeout(hintTimer);
+  hintTimer=setTimeout(()=> liveHint.style.opacity="0", 2600);
+}
+$("#startBtn").addEventListener("click", enterLive);
+stage.addEventListener("dblclick", ()=>{ if(liveMode) exitLive(); });
+document.addEventListener("mousemove",()=>{
+  if(!liveMode) return;
+  document.body.classList.add("show-cursor");
+  flashHint();
+});
+
+/* ============================================================
+   BACKLIGHT UI
+   ============================================================ */
+function buildQuadControls(){
+  const wrap = $("#quadControls");
+  wrap.innerHTML="";
+  const names = ["Top-Left","Top-Right","Bottom-Left","Bottom-Right"];
+  for(let i=0;i<4;i++){
+    const box = document.createElement("div");
+    box.className="space-y-1 quad-ctl";
+    box.dataset.idx=i;
+    const presetOpts = Object.keys(PRESETS).map(n=>`<option value="${PRESETS[n]}">${n}</option>`).join("");
+    box.innerHTML = `
+      <div class="field-label">${names[i]}</div>
+      <input type="color" data-qcolor="${i}" value="${S.backlight.quads[i]}" />
+      <select data-qpreset="${i}"><option value="">Preset…</option>${presetOpts}</select>`;
+    wrap.appendChild(box);
+  }
+  wrap.querySelectorAll("[data-qcolor]").forEach(inp=>{
+    inp.addEventListener("input",(e)=>{
+      const i=+e.target.dataset.qcolor;
+      S.backlight.quads[i]=e.target.value;
+      renderBacklight(); saveLast();
+    });
+  });
+  wrap.querySelectorAll("[data-qpreset]").forEach(sel=>{
+    sel.addEventListener("change",(e)=>{
+      const i=+e.target.dataset.qpreset;
+      if(!e.target.value) return;
+      S.backlight.quads[i]=e.target.value;
+      wrap.querySelector(`[data-qcolor="${i}"]`).value=e.target.value;
+      renderBacklight(); saveLast();
+      e.target.value="";
+    });
+  });
+  applyLayoutDisabling();
+}
+
+function applyLayoutDisabling(){
+  const active = {
+    "1":[0], "2v":[0,1], "2h":[0,2], "4":[0,1,2,3]
+  }[S.backlight.layout];
+  $$(".quad-ctl").forEach(ctl=>{
+    const i=+ctl.dataset.idx;
+    ctl.classList.toggle("disabledZone", !active.includes(i));
+  });
+}
+
+function syncQuadInputs(){
+  $$("[data-qcolor]").forEach(inp=> inp.value = S.backlight.quads[+inp.dataset.qcolor]);
+}
+
+/* ============================================================
+   PROFILES (layout, not script text)
+   ============================================================ */
+function snapshot(){
+  return JSON.parse(JSON.stringify({
+    pole:S.pole, phone:S.phone, textbox:S.textbox, lensPos:S.lensPos,
+    font:S.font, scroll:S.scroll, backlight:S.backlight
+  }));
+}
+function applySnapshot(snap){
+  S = Object.assign(defaultState(), JSON.parse(JSON.stringify(snap)));
+  renderAll(); syncAllControls();
+}
+function readStore(key){ try{ return JSON.parse(localStorage.getItem(key)||"{}"); }catch(_){ return {}; } }
+function writeStore(key,obj){ localStorage.setItem(key, JSON.stringify(obj)); }
+
+function refreshProfileList(sel){
+  const store = readStore(LS.profiles);
+  const dd = $("#profileSelect");
+  dd.innerHTML = '<option value="">— Select a profile —</option>';
+  Object.keys(store).sort().forEach(n=>{
+    const o=document.createElement("option"); o.value=n; o.textContent=n; dd.appendChild(o);
+  });
+  if(sel) dd.value=sel;
+}
+$("#saveProfile").addEventListener("click",()=>{
+  const name = $("#profileName").value.trim();
+  if(!name){ $("#profileName").focus(); return; }
+  const store = readStore(LS.profiles);
+  store[name]=snapshot(); writeStore(LS.profiles,store);
+  $("#profileName").value=""; refreshProfileList(name);
+});
+$("#loadProfile").addEventListener("click",()=>{
+  const name=$("#profileSelect").value; if(!name) return;
+  const store=readStore(LS.profiles);
+  if(store[name]){ applySnapshot(store[name]); saveLast(); }
+});
+$("#deleteProfile").addEventListener("click",()=>{
+  const name=$("#profileSelect").value; if(!name) return;
+  const store=readStore(LS.profiles); delete store[name]; writeStore(LS.profiles,store);
+  refreshProfileList();
+});
+
+/* ============================================================
+   SCRIPT LIBRARY (named)
+   ============================================================ */
+function refreshScriptList(sel){
+  const store=readStore(LS.scripts);
+  const dd=$("#scriptSelect");
+  dd.innerHTML='<option value="">— Select a saved script —</option>';
+  Object.keys(store).sort().forEach(n=>{
+    const o=document.createElement("option"); o.value=n; o.textContent=n; dd.appendChild(o);
+  });
+  if(sel) dd.value=sel;
+}
+$("#saveScript").addEventListener("click",()=>{
+  const name=$("#scriptName").value.trim();
+  if(!name){ $("#scriptName").focus(); return; }
+  const store=readStore(LS.scripts);
+  store[name]=$("#scriptInput").value;
+  writeStore(LS.scripts,store);
+  $("#scriptName").value="";
+  refreshScriptList(name);
+});
+$("#loadScript").addEventListener("click",()=>{
+  const name=$("#scriptSelect").value; if(!name) return;
+  const store=readStore(LS.scripts);
+  if(typeof store[name]==="string"){
+    $("#scriptInput").value=store[name];
+    scriptText=store[name];
+    tpScroll.scrollTop=0;
+    renderText(); saveLast();
+  }
+});
+$("#deleteScript").addEventListener("click",()=>{
+  const name=$("#scriptSelect").value; if(!name) return;
+  const store=readStore(LS.scripts); delete store[name]; writeStore(LS.scripts,store);
+  refreshScriptList();
+});
+
+/* ============================================================
+   CONTROL BINDINGS
+   ============================================================ */
+$("#scriptInput").addEventListener("input",(e)=>{ scriptText=e.target.value; renderText(); saveLast(); });
+
+$("#fontSize").addEventListener("input",(e)=>{ S.font.size=+e.target.value; $("#fontVal").textContent=e.target.value+"px"; renderText(); saveLast(); });
+$("#lineHeight").addEventListener("input",(e)=>{ S.font.lineHeight=+e.target.value; $("#lhVal").textContent=(+e.target.value).toFixed(2); renderText(); saveLast(); });
+$("#tpBg").addEventListener("input",(e)=>{ S.font.bgDim=+e.target.value; $("#bgVal").textContent=e.target.value+"%"; renderText(); saveLast(); });
+$$(".align-btn").forEach(b=> b.addEventListener("click",()=>{
+  S.font.align=b.dataset.align;
+  $$(".align-btn").forEach(x=>x.classList.toggle("active",x===b));
+  renderText(); saveLast();
+}));
+
+$("#autoScroll").addEventListener("change",(e)=>{ S.scroll.auto=e.target.checked; paused=false; saveLast(); });
+$("#scrollSpeed").addEventListener("input",(e)=>{ S.scroll.speed=+e.target.value; $("#speedVal").textContent=e.target.value; saveLast(); });
+$("#scheme").addEventListener("change",(e)=>{ S.scroll.scheme=e.target.value; updateSchemeHelp(); saveLast(); });
+$("#rewindBtn").addEventListener("click",()=>{ tpScroll.scrollTop=0; acc=0; });
+
+$("#intensity").addEventListener("input",(e)=>{ S.backlight.intensity=+e.target.value; $("#intVal").textContent=e.target.value+"%"; renderBacklight(); saveLast(); });
+$("#blLayout").addEventListener("change",(e)=>{ S.backlight.layout=e.target.value; applyLayoutDisabling(); renderBacklight(); saveLast(); });
+
+$("#lensPos").addEventListener("change",(e)=>{ S.lensPos=e.target.value; renderLensMarker(); saveLast(); });
+$("#alignBtn").addEventListener("click", alignTextToLens);
+$("#resetPole").addEventListener("click",()=>{ S.pole=defaultState().pole; renderMovable(els.pole,S.pole); saveLast(); });
+$("#resetPhone").addEventListener("click",()=>{ S.phone=defaultState().phone; renderMovable(els.phone,S.phone); renderLensMarker(); saveLast(); });
+
+/* Sidebar collapse */
+function setSidebar(open){ $("#sidebar").classList.toggle("collapsed",!open); }
+$("#hideSidebar").addEventListener("click",()=> setSidebar(false));
+$("#collapseBtn").addEventListener("click",()=> setSidebar($("#sidebar").classList.contains("collapsed")));
+
+function updateSchemeHelp(){
+  const map={
+    A:"Space = play/pause • ↑/↓ = speed. Works anywhere on screen.",
+    B:"Scroll wheel over the text scrubs & pauses auto-scroll • middle-click resumes.",
+    C:"Hover the text box: top third scrolls up, bottom scrolls down, middle pauses."
+  };
+  $("#schemeHelp").textContent = map[S.scroll.scheme];
+}
+
+/* ============================================================
+   SYNC UI FROM STATE
+   ============================================================ */
+function syncAllControls(){
+  $("#fontSize").value=S.font.size; $("#fontVal").textContent=S.font.size+"px";
+  $("#lineHeight").value=S.font.lineHeight; $("#lhVal").textContent=(+S.font.lineHeight).toFixed(2);
+  $("#tpBg").value=S.font.bgDim; $("#bgVal").textContent=S.font.bgDim+"%";
+  $$(".align-btn").forEach(x=>x.classList.toggle("active",x.dataset.align===S.font.align));
+  syncScrollUI();
+  $("#scheme").value=S.scroll.scheme; updateSchemeHelp();
+  $("#intensity").value=S.backlight.intensity; $("#intVal").textContent=S.backlight.intensity+"%";
+  $("#blLayout").value=S.backlight.layout;
+  $("#lensPos").value=S.lensPos;
+  syncQuadInputs(); applyLayoutDisabling();
+}
+
+/* ============================================================
+   PERSISTENCE (last session)
+   ============================================================ */
+let saveTimer=null;
+function saveLast(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    localStorage.setItem(LS.last, JSON.stringify({ state:snapshot(), script:scriptText }));
+  },150);
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function seedDefaultProfile(){
+  const store=readStore(LS.profiles);
+  if(!store["Default Profile"]){
+    store["Default Profile"]=snapshot();
+    writeStore(LS.profiles,store);
+  }
+}
+
+function boot(){
+  // restore last session if present
+  try{
+    const last=JSON.parse(localStorage.getItem(LS.last)||"null");
+    if(last && last.state){
+      S = Object.assign(defaultState(), last.state);
+      scriptText = last.script || "";
+    }
+  }catch(_){}
+
+  $("#scriptInput").value = scriptText;
+  buildQuadControls();
+  renderAll();
+  syncAllControls();
+  seedDefaultProfile();
+  refreshProfileList();
+  refreshScriptList();
+
+  makeInteractive(els.pole,  "pole",    { resize:true, rotate:true, minW:8,  minH:20 });
+  makeInteractive(els.phone, "phone",   { resize:true, rotate:true, minW:40, minH:60 });
+  makeInteractive(els.textbox,"textbox",{ resize:true, rotate:false, minW:120, minH:80 });
+}
+
+window.addEventListener("resize", ()=>{ /* keep positions absolute; nothing forced */ });
+boot();
+</script>
+</body>
+</html>
