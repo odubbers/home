@@ -14,9 +14,12 @@
   #backlight { position:absolute; inset:0; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; z-index:1; transition:opacity .15s linear; }
   .quad { width:100%; height:100%; }
 
-  /* Obstruction + textbox generic */
-  .movable { position:absolute; z-index:20; box-sizing:border-box; will-change:transform; touch-action:none; }
-  .obstruction { background:#000000; z-index:15; }
+  /* Movable elements. NOTE z-order: the text box sits BELOW the gear so the
+     black shapes act as a true physical blocker on top. Text is reflowed to
+     avoid the gear entirely, so nothing should ever land underneath anyway. */
+  .movable { position:absolute; box-sizing:border-box; will-change:transform; touch-action:none; }
+  #textbox { z-index:20; background:transparent; }
+  .obstruction { background:#000000; z-index:40; }
   #phone { border-radius:22px; }
   #pole { border-radius:6px; }
 
@@ -24,7 +27,6 @@
   .movable .frame { position:absolute; inset:0; border:1.5px dashed rgba(96,165,250,.9); border-radius:inherit; pointer-events:none; }
   .obstruction .frame { border-style:solid; border-color:rgba(96,165,250,.55); }
   .handle { position:absolute; width:14px; height:14px; background:#0f172a; border:2px solid #60a5fa; border-radius:3px; z-index:5; }
-  .handle.round { border-radius:50%; }
   .h-nw{top:-7px;left:-7px;cursor:nwse-resize} .h-ne{top:-7px;right:-7px;cursor:nesw-resize}
   .h-se{bottom:-7px;right:-7px;cursor:nwse-resize} .h-sw{bottom:-7px;left:-7px;cursor:nesw-resize}
   .h-n{top:-7px;left:50%;margin-left:-7px;cursor:ns-resize} .h-s{bottom:-7px;left:50%;margin-left:-7px;cursor:ns-resize}
@@ -33,30 +35,25 @@
   .rot-stem{ position:absolute; top:-24px; left:50%; width:2px; height:24px; margin-left:-1px; background:rgba(96,165,250,.6); pointer-events:none; }
   .movable .label { position:absolute; top:-22px; left:0; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#93c5fd; background:rgba(2,6,23,.85); padding:1px 6px; border-radius:4px; pointer-events:none; white-space:nowrap; }
 
-  /* Phone graphic (setup guide) */
+  /* Phone graphic (setup guide only) */
   .phone-guide { position:absolute; inset:6px; border:1px solid #1f2937; border-radius:16px; pointer-events:none; }
   .cam-bump { position:absolute; top:8px; left:8px; width:34px; height:52px; border:1px solid #2b3648; border-radius:10px; background:#0a0a0a; }
   .cam-bump.right { left:auto; right:8px; }
   .lens { position:absolute; width:34px; height:34px; border-radius:50%; border:2px solid #3b4a63; box-shadow:0 0 0 4px rgba(59,74,99,.25); transform:translate(-50%,-50%); pointer-events:none; }
   .lens::after { content:""; position:absolute; inset:8px; border-radius:50%; border:1px solid #2b3648; }
-  .lens::before { content:""; position:absolute; left:50%; top:50%; width:12px; height:1px; background:#3b4a63; transform:translate(-50%,-50%); box-shadow:0 0 0 0 #3b4a63; }
+  .lens::before { content:""; position:absolute; left:50%; top:50%; width:12px; height:1px; background:#3b4a63; transform:translate(-50%,-50%); }
   .lens-cross-v { position:absolute; left:50%; top:50%; width:1px; height:12px; background:#3b4a63; transform:translate(-50%,-50%); }
 
-  /* Textbox */
-  #textbox { z-index:25; background:transparent; }
-  #textbox .tp-scroll {
-    position:absolute; inset:0; overflow-y:auto; overflow-x:hidden;
-    scrollbar-width:none; -ms-overflow-style:none; border-radius:10px;
-  }
-  #textbox .tp-scroll::-webkit-scrollbar { display:none; width:0; height:0; }
-  #textbox .tp-content { padding:60vh 22px; color:#ffffff; font-weight:600; text-shadow:0 2px 10px rgba(0,0,0,.85); white-space:pre-wrap; word-break:break-word; }
+  /* Text box + reflow viewport */
   #textbox .tp-bg { position:absolute; inset:0; border-radius:10px; background:rgba(0,0,0,var(--tp-bg,0.35)); pointer-events:none; }
+  #tpViewport { position:absolute; inset:0; overflow:hidden; border-radius:10px; }
+  .tp-word { position:absolute; top:0; left:0; white-space:pre; color:#fff; font-weight:600; text-shadow:0 2px 10px rgba(0,0,0,.9); will-change:transform; }
 
   /* Live mode: strip all setup chrome */
   body.live .setup-only { display:none !important; }
   body.live .frame, body.live .handle, body.live .rot-stem, body.live .label,
   body.live .phone-guide { display:none !important; }
-  body.live #textbox .tp-scroll { border-radius:0; }
+  body.live #textbox .tp-bg, body.live #tpViewport { border-radius:0; }
   body.live { cursor:none; }
   body.live.show-cursor { cursor:default; }
 
@@ -100,6 +97,14 @@
     <div class="quad" data-quad="3"></div>
   </div>
 
+  <!-- Teleprompter text box (below the gear; text reflows around it) -->
+  <div id="textbox" class="movable">
+    <div class="tp-bg"></div>
+    <div id="tpViewport"></div>
+    <span class="label setup-only">Script</span>
+    <div class="frame setup-only"></div>
+  </div>
+
   <!-- Pole -->
   <div id="pole" class="movable obstruction">
     <span class="label setup-only">Pole</span>
@@ -113,14 +118,6 @@
       <div class="cam-bump" id="camBump"></div>
       <div class="lens" id="lensMarker"><span class="lens-cross-v"></span></div>
     </div>
-    <div class="frame setup-only"></div>
-  </div>
-
-  <!-- Teleprompter text box -->
-  <div id="textbox" class="movable">
-    <div class="tp-bg"></div>
-    <div class="tp-scroll" id="tpScroll"><div class="tp-content" id="tpContent"></div></div>
-    <span class="label setup-only">Script</span>
     <div class="frame setup-only"></div>
   </div>
 </div>
@@ -199,6 +196,10 @@
         <div class="flex justify-between field-label"><span>Text panel dim</span><span id="bgVal">35%</span></div>
         <input type="range" id="tpBg" min="0" max="90" step="1" value="35" />
       </div>
+      <label class="flex items-center justify-between">
+        <span class="text-sm">Flow text around gear</span>
+        <input type="checkbox" id="wrapGear" class="w-4 h-4 accent-emerald-500" checked />
+      </label>
 
       <hr class="border-slate-800" />
 
@@ -229,7 +230,7 @@
       <span class="font-semibold text-sm">Gear Blockout</span><span class="chev text-slate-500">▸</span>
     </summary>
     <div class="mt-3 space-y-3">
-      <p class="text-[11px] text-slate-500">Drag the black shapes to cover your phone &amp; pole. Corner/edge handles resize; green knob rotates.</p>
+      <p class="text-[11px] text-slate-500">Drag the black shapes over your phone &amp; pole. The script text automatically flows around whatever they cover. Corner/edge handles resize; green knob rotates.</p>
       <div>
         <div class="field-label mb-1">Camera lens position</div>
         <select id="lensPos">
@@ -306,512 +307,518 @@ const PRESETS = {
   "RGB Red":"#ff3b3b",
   "Off (Black)":"#000000"
 };
+const PLACEHOLDER = "Your script will appear here. Paste text in the sidebar, or load a saved script. Notice how the text automatically flows around the phone and the pole so no words are ever hidden behind your gear.";
 
 function defaultState(){
   const W = window.innerWidth, H = window.innerHeight, cx = W/2;
   const poleW = 46, poleH = Math.round(H*0.55);
   const phW = 156, phH = 320;
-  const tbW = Math.min(560, W-120), tbH = 220;
+  const tbW = Math.min(760, W-80), tbH = Math.round(H*0.72);
   return {
     pole:  { x: cx-poleW/2, y: Math.round(H*0.42), w: poleW, h: poleH, rot: 0 },
     phone: { x: cx-phW/2,   y: Math.round(H*0.07), w: phW,  h: phH,  rot: 0 },
-    textbox:{ x: cx-tbW/2,  y: Math.round(H*0.45), w: tbW,  h: tbH,  rot: 0 },
+    textbox:{ x: cx-tbW/2,  y: Math.round(H*0.10), w: tbW,  h: tbH,  rot: 0 },
     lensPos: "center-top",
-    font: { size:44, lineHeight:1.4, align:"center", bgDim:35 },
+    font: { size:44, lineHeight:1.4, align:"center", bgDim:35, wrapGear:true },
     scroll:{ auto:false, speed:60, scheme:"A" },
     backlight:{ intensity:70, layout:"1", quads:["#eaf1ff","#eaf1ff","#eaf1ff","#eaf1ff"] }
   };
 }
 
 let S = defaultState();
-let scriptText = "";                 // current script in the reader
-let paused = false;                  // runtime pause flag (auto-scroll)
+let scriptText = "";
+let paused = false;
 let liveMode = false;
 
-const LS = {
-  profiles:"tp_profiles_v1",
-  scripts:"tp_scripts_v1",
-  last:"tp_last_v1"
-};
+/* virtual scroll state (text scrolls; gear stays fixed on screen) */
+let scrollY = 0;
+let docHeight = 0;
+let layoutDirty = true;
+let lastLayoutScrollY = NaN;
+
+const LS = { profiles:"tp_profiles_v1", scripts:"tp_scripts_v1", last:"tp_last_v2" };
 
 /* ============================================================
-   DOM HELPERS
+   DOM HELPERS + GEOMETRY
    ============================================================ */
 const $ = (s,root=document)=>root.querySelector(s);
 const $$ = (s,root=document)=>Array.from(root.querySelectorAll(s));
 const stage = $("#stage");
 const els = { pole:$("#pole"), phone:$("#phone"), textbox:$("#textbox") };
-const tpScroll = $("#tpScroll");
-const tpContent = $("#tpContent");
+const tpViewport = $("#tpViewport");
 
 function rotatePoint(x,y,deg){
-  const r = deg*Math.PI/180, c=Math.cos(r), s=Math.sin(r);
-  return { x: x*c - y*s, y: x*s + y*c };
+  const r=deg*Math.PI/180, c=Math.cos(r), s=Math.sin(r);
+  return { x:x*c - y*s, y:x*s + y*c };
 }
 function clamp(v,min){ return v<min?min:v; }
 
+function stageXY(e){
+  const r=stage.getBoundingClientRect();
+  return { x:e.clientX-r.left, y:e.clientY-r.top };
+}
+
 /* ============================================================
-   RENDER
+   RENDER (positions / backlight / lens)
    ============================================================ */
-function renderMovable(el, m){
-  el.style.left = m.x+"px";
-  el.style.top = m.y+"px";
-  el.style.width = m.w+"px";
-  el.style.height = m.h+"px";
-  el.style.transform = "rotate("+(m.rot||0)+"deg)";
-  el.style.transformOrigin = "center center";
+function renderMovable(el,m){
+  el.style.left=m.x+"px"; el.style.top=m.y+"px";
+  el.style.width=m.w+"px"; el.style.height=m.h+"px";
+  el.style.transform="rotate("+(m.rot||0)+"deg)";
+  el.style.transformOrigin="center center";
 }
-
 function renderBacklight(){
-  const bl = $("#backlight");
-  bl.style.opacity = (S.backlight.intensity/100).toString();
-  const cols = effectiveQuadColors();
-  $$(".quad").forEach((q,i)=> q.style.background = cols[i]);
+  $("#backlight").style.opacity=(S.backlight.intensity/100).toString();
+  const cols=effectiveQuadColors();
+  $$(".quad").forEach((q,i)=> q.style.background=cols[i]);
 }
-
 function effectiveQuadColors(){
-  const q = S.backlight.quads;
+  const q=S.backlight.quads;
   switch(S.backlight.layout){
     case "1":  return [q[0],q[0],q[0],q[0]];
-    case "2v": return [q[0],q[1],q[0],q[1]];   // left / right
-    case "2h": return [q[0],q[0],q[2],q[2]];   // top / bottom
+    case "2v": return [q[0],q[1],q[0],q[1]];
+    case "2h": return [q[0],q[0],q[2],q[2]];
     default:   return [q[0],q[1],q[2],q[3]];
   }
 }
-
-function renderText(){
-  tpContent.style.fontSize = S.font.size+"px";
-  tpContent.style.lineHeight = S.font.lineHeight;
-  tpContent.style.textAlign = S.font.align;
-  $("#textbox").style.setProperty("--tp-bg", (S.font.bgDim/100).toString());
-  tpContent.textContent = scriptText || "Your script will appear here. Paste text in the sidebar, or load a saved script.";
-}
-
 function lensLocalFraction(pos){
   switch(pos){
-    case "top-left":     return { fx:0.28, fy:0.16 };
-    case "top-right":    return { fx:0.72, fy:0.16 };
-    case "center-bottom":return { fx:0.50, fy:0.84 };
-    default:             return { fx:0.50, fy:0.16 }; // center-top
+    case "top-left":     return {fx:0.28,fy:0.16};
+    case "top-right":    return {fx:0.72,fy:0.16};
+    case "center-bottom":return {fx:0.50,fy:0.84};
+    default:             return {fx:0.50,fy:0.16};
   }
 }
-
 function renderLensMarker(){
-  const {fx,fy} = lensLocalFraction(S.lensPos);
-  const lm = $("#lensMarker");
-  lm.style.left = (fx*100)+"%";
-  lm.style.top = (fy*100)+"%";
-  const bump = $("#camBump");
-  bump.classList.toggle("right", S.lensPos==="top-right");
+  const {fx,fy}=lensLocalFraction(S.lensPos);
+  const lm=$("#lensMarker"); lm.style.left=(fx*100)+"%"; lm.style.top=(fy*100)+"%";
+  $("#camBump").classList.toggle("right", S.lensPos==="top-right");
 }
-
-function renderAll(){
-  renderMovable(els.pole, S.pole);
-  renderMovable(els.phone, S.phone);
-  renderMovable(els.textbox, S.textbox);
+function renderNonText(){
+  renderMovable(els.pole,S.pole);
+  renderMovable(els.phone,S.phone);
+  renderMovable(els.textbox,S.textbox);
   renderBacklight();
-  renderText();
   renderLensMarker();
 }
 
 /* ============================================================
-   INTERACTION: drag / resize / rotate (rotation-aware)
+   TEXT REFLOW ENGINE
+   Words are laid out top-to-bottom; for each line we subtract the
+   screen-space bounding boxes of the phone + pole, then fill the words
+   into whatever horizontal segments remain. Because the gear is fixed on
+   screen while the text scrolls, layout is recomputed against the current
+   scroll offset every frame it moves.
    ============================================================ */
-function stageXY(e){
-  const r = stage.getBoundingClientRect();
-  return { x: e.clientX - r.left, y: e.clientY - r.top };
+const measureCanvas = document.createElement("canvas");
+const measureCtx = measureCanvas.getContext("2d");
+let widthCache = new Map();
+let cacheFontKey = "";
+const wordPool = [];
+
+function fontString(){ return "600 "+S.font.size+"px ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"; }
+function ensureFont(){
+  const key=fontString();
+  if(key!==cacheFontKey){ measureCtx.font=key; widthCache=new Map(); cacheFontKey=key; }
+}
+function measureWord(w){
+  let v=widthCache.get(w);
+  if(v===undefined){ v=measureCtx.measureText(w).width; widthCache.set(w,v); }
+  return v;
 }
 
-function buildHandles(el, opts){
-  const frag = document.createDocumentFragment();
+function obstacleAABBs(){
+  if(!S.font.wrapGear) return [];
+  const PAD=14;
+  return [S.pole,S.phone].map(m=>{
+    const cx=m.x+m.w/2, cy=m.y+m.h/2;
+    const pts=[[-m.w/2,-m.h/2],[m.w/2,-m.h/2],[m.w/2,m.h/2],[-m.w/2,m.h/2]]
+      .map(([x,y])=>{ const r=rotatePoint(x,y,m.rot); return {x:cx+r.x,y:cy+r.y}; });
+    const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+    return { left:Math.min.apply(null,xs)-PAD, right:Math.max.apply(null,xs)+PAD,
+             top:Math.min.apply(null,ys)-PAD, bottom:Math.max.apply(null,ys)+PAD };
+  });
+}
+
+function subtractInterval(segs,L,R){
+  const out=[];
+  for(const seg of segs){
+    const a=seg[0], b=seg[1];
+    if(R<=a || L>=b){ out.push(seg); continue; }
+    if(L>a) out.push([a,L]);
+    if(R<b) out.push([R,b]);
+  }
+  return out.filter(s=> (s[1]-s[0])>6 );
+}
+
+function relayout(){
+  ensureFont();
+  const box=S.textbox;
+  const lh=S.font.size*S.font.lineHeight;
+  const SIDE=Math.max(10, S.font.size*0.35);
+  const contentLeft=SIDE, contentRight=box.w-SIDE;
+  const obs=obstacleAABBs();
+  const align=S.font.align;
+  const spaceW=measureWord(" ")||S.font.size*0.28;
+
+  const paras=(scriptText||PLACEHOLDER).split("\n");
+  const placements=[];
+  let docY=0;
+  const viewH=box.h;
+
+  for(let p=0;p<paras.length;p++){
+    const raw=paras[p];
+    const words = raw.length ? raw.split(/\s+/).filter(w=>w.length) : [];
+    let wi=0;
+    let firstLineOfPara=true;
+
+    // A paragraph always consumes at least one line (blank lines produce spacing)
+    while(wi<words.length || firstLineOfPara){
+      firstLineOfPara=false;
+      const lineLocalTop = docY - scrollY;           // relative to box top
+      const screenTop = box.y + lineLocalTop;
+      const screenBot = screenTop + lh;
+
+      // build available horizontal segments for this line's screen band
+      let segs=[[contentLeft,contentRight]];
+      for(const o of obs){
+        if(o.bottom<=screenTop || o.top>=screenBot) continue;
+        const oL=o.left-box.x, oR=o.right-box.x;
+        segs=subtractInterval(segs,oL,oR);
+        if(!segs.length) break;
+      }
+
+      const visible = lineLocalTop > -lh*1.5 && lineLocalTop < viewH+lh;
+
+      // greedily distribute words into segments (left→right)
+      const segWords = segs.map(()=>[]);
+      let si=0;
+      while(wi<words.length && si<segs.length){
+        const word=words[wi];
+        const ww=measureWord(word);
+        const seg=segs[si];
+        const used=segWords[si].reduce((a,it)=>a+it.w+spaceW,0);
+        const curX=seg[0]+used;
+        if(curX+ww<=seg[1]){
+          segWords[si].push({text:word,w:ww}); wi++;
+        } else if(segWords[si].length===0){
+          // word longer than the whole segment: place it anyway to make progress
+          segWords[si].push({text:word,w:ww}); wi++; si++;
+        } else {
+          si++; // segment full → try next
+        }
+      }
+
+      if(visible){
+        for(let s=0;s<segs.length;s++){
+          const list=segWords[s]; if(!list.length) continue;
+          const seg=segs[s];
+          const totalW=list.reduce((a,it)=>a+it.w,0)+spaceW*(list.length-1);
+          let x;
+          if(align==="right") x=seg[1]-totalW;
+          else if(align==="center") x=(seg[0]+seg[1])/2 - totalW/2;
+          else x=seg[0];
+          for(const it of list){ placements.push({x:x,y:lineLocalTop,t:it.text}); x+=it.w+spaceW; }
+        }
+      }
+
+      docY+=lh;
+
+      // If a line is fully blocked (no segments) but words remain, we simply
+      // advance to the next line — the band moves down and eventually clears.
+      if(!segs.length && wi<words.length){ continue; }
+    }
+  }
+
+  docHeight=docY;
+  paintWords(placements, lh);
+  lastLayoutScrollY=scrollY;
+  layoutDirty=false;
+}
+
+function paintWords(placements, lh){
+  while(wordPool.length<placements.length){
+    const s=document.createElement("span"); s.className="tp-word"; tpViewport.appendChild(s); wordPool.push(s);
+  }
+  const fs=S.font.size+"px";
+  for(let i=0;i<wordPool.length;i++){
+    const s=wordPool[i];
+    if(i<placements.length){
+      const pl=placements[i];
+      if(s._t!==pl.t){ s.textContent=pl.t; s._t=pl.t; }
+      s.style.fontSize=fs;
+      s.style.lineHeight=lh+"px";
+      s.style.transform="translate("+pl.x+"px,"+pl.y+"px)";
+      if(s._hidden){ s.style.display="block"; s._hidden=false; }
+    } else if(!s._hidden){ s.style.display="none"; s._hidden=true; }
+  }
+}
+
+function markDirty(){ layoutDirty=true; }
+
+/* ============================================================
+   SCROLL BOUNDS + LOOP
+   ============================================================ */
+function minScroll(){ return -Math.round(S.textbox.h*0.5); }
+function maxScroll(){ return Math.max(minScroll(), docHeight - Math.round(S.textbox.h*0.25)); }
+function clampScroll(){ scrollY=Math.max(minScroll(), Math.min(scrollY, maxScroll())); }
+
+let lastTs=0, acc=0, hoverDir=0;
+function speedPx(){ return S.scroll.speed*4; }
+
+function loop(ts){
+  const dt=lastTs?(ts-lastTs)/1000:0; lastTs=ts;
+  let dir=0;
+  if(S.scroll.scheme==="C") dir=hoverDir;
+  else if(S.scroll.auto && !paused) dir=1;
+
+  if(dir!==0 && dt>0){
+    acc += speedPx()*dt*dir;
+    const whole = acc>=0?Math.floor(acc):Math.ceil(acc);
+    if(whole){ scrollY+=whole; acc-=whole; clampScroll(); markDirty(); }
+  }
+  if(layoutDirty || scrollY!==lastLayoutScrollY) relayout();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ============================================================
+   INTERACTION: drag / resize / rotate (rotation-aware)
+   ============================================================ */
+function buildHandles(el,opts){
+  const frag=document.createDocumentFragment();
   if(opts.resize){
     ["nw","ne","se","sw","n","e","s","w"].forEach(dir=>{
-      const h = document.createElement("div");
-      h.className = "handle setup-only h-"+dir;
-      h.dataset.resize = dir;
-      frag.appendChild(h);
+      const h=document.createElement("div"); h.className="handle setup-only h-"+dir; h.dataset.resize=dir; frag.appendChild(h);
     });
   }
   if(opts.rotate){
-    const stem = document.createElement("div"); stem.className="rot-stem setup-only"; frag.appendChild(stem);
-    const rh = document.createElement("div"); rh.className="handle setup-only h-rot"; rh.dataset.rotate="1"; frag.appendChild(rh);
+    const stem=document.createElement("div"); stem.className="rot-stem setup-only"; frag.appendChild(stem);
+    const rh=document.createElement("div"); rh.className="handle setup-only h-rot"; rh.dataset.rotate="1"; frag.appendChild(rh);
   }
   el.appendChild(frag);
 }
+const RESIZE_VEC={ nw:[-1,-1],ne:[1,-1],se:[1,1],sw:[-1,1],n:[0,-1],s:[0,1],e:[1,0],w:[-1,0] };
 
-const RESIZE_VEC = {
-  nw:[-1,-1], ne:[1,-1], se:[1,1], sw:[-1,1],
-  n:[0,-1], s:[0,1], e:[1,0], w:[-1,0]
-};
+function makeInteractive(el,key,opts){
+  opts=Object.assign({resize:true,rotate:false,minW:20,minH:20},opts||{});
+  buildHandles(el,opts);
+  let mode=null,start=null;
 
-function makeInteractive(el, key, opts){
-  opts = Object.assign({ resize:true, rotate:false, minW:20, minH:20 }, opts||{});
-  buildHandles(el, opts);
-
-  let mode=null, start=null;
-
-  el.addEventListener("pointerdown", (e)=>{
+  el.addEventListener("pointerdown",(e)=>{
     if(liveMode) return;
-    const m = S[key];
-    const t = e.target;
-    const p = stageXY(e);
-
-    if(t.dataset && t.dataset.rotate){
-      mode="rotate";
-      start = { p };
-      e.stopPropagation();
-    } else if(t.dataset && t.dataset.resize){
-      const dir = t.dataset.resize;
-      const [hx,hy] = RESIZE_VEC[dir];
-      // fixed anchor = opposite side, computed in stage coords at start
-      const cx0 = m.x + m.w/2, cy0 = m.y + m.h/2;
-      const anchorLocal = { x:-hx*m.w/2, y:-hy*m.h/2 };
-      const ar = rotatePoint(anchorLocal.x, anchorLocal.y, m.rot);
-      const anchor = { x: cx0+ar.x, y: cy0+ar.y };
-      mode="resize";
-      start = { hx, hy, anchor, rot:m.rot };
-      e.stopPropagation();
-    } else {
-      mode="drag";
-      start = { p, ox:m.x, oy:m.y };
-    }
-    el.setPointerCapture(e.pointerId);
-    e.preventDefault();
+    const m=S[key], t=e.target, p=stageXY(e);
+    if(t.dataset && t.dataset.rotate){ mode="rotate"; start={p}; e.stopPropagation(); }
+    else if(t.dataset && t.dataset.resize){
+      const [hx,hy]=RESIZE_VEC[t.dataset.resize];
+      const cx0=m.x+m.w/2, cy0=m.y+m.h/2;
+      const ar=rotatePoint(-hx*m.w/2,-hy*m.h/2,m.rot);
+      mode="resize"; start={hx,hy,anchor:{x:cx0+ar.x,y:cy0+ar.y},rot:m.rot}; e.stopPropagation();
+    } else { mode="drag"; start={p,ox:m.x,oy:m.y}; }
+    el.setPointerCapture(e.pointerId); e.preventDefault();
   });
 
-  el.addEventListener("pointermove", (e)=>{
+  el.addEventListener("pointermove",(e)=>{
     if(!mode) return;
-    const m = S[key];
-    const p = stageXY(e);
-
-    if(mode==="drag"){
-      m.x = start.ox + (p.x - start.p.x);
-      m.y = start.oy + (p.y - start.p.y);
-    } else if(mode==="rotate"){
-      const cx = m.x + m.w/2, cy = m.y + m.h/2;
-      let deg = Math.atan2(p.y-cy, p.x-cx)*180/Math.PI + 90;
-      if(e.shiftKey) deg = Math.round(deg/15)*15;
-      m.rot = deg;
+    const m=S[key], p=stageXY(e);
+    if(mode==="drag"){ m.x=start.ox+(p.x-start.p.x); m.y=start.oy+(p.y-start.p.y); }
+    else if(mode==="rotate"){
+      const cx=m.x+m.w/2, cy=m.y+m.h/2;
+      let deg=Math.atan2(p.y-cy,p.x-cx)*180/Math.PI+90;
+      if(e.shiftKey) deg=Math.round(deg/15)*15;
+      m.rot=deg;
     } else if(mode==="resize"){
-      const { hx, hy, anchor, rot } = start;
-      const d = { x:p.x-anchor.x, y:p.y-anchor.y };
-      const dl = rotatePoint(d.x, d.y, -rot);       // into element local frame
-      const newW = hx!==0 ? clamp(Math.abs(dl.x), opts.minW) : m.w;
-      const newH = hy!==0 ? clamp(Math.abs(dl.y), opts.minH) : m.h;
-      const off = rotatePoint(hx*newW/2, hy*newH/2, rot);
-      const cx = anchor.x + off.x, cy = anchor.y + off.y;
-      m.w = newW; m.h = newH;
-      m.x = cx - newW/2; m.y = cy - newH/2;
+      const {hx,hy,anchor,rot}=start;
+      const dl=rotatePoint(p.x-anchor.x,p.y-anchor.y,-rot);
+      const newW=hx!==0?clamp(Math.abs(dl.x),opts.minW):m.w;
+      const newH=hy!==0?clamp(Math.abs(dl.y),opts.minH):m.h;
+      const off=rotatePoint(hx*newW/2,hy*newH/2,rot);
+      m.w=newW; m.h=newH; m.x=anchor.x+off.x-newW/2; m.y=anchor.y+off.y-newH/2;
     }
-    renderMovable(el, m);
+    renderMovable(el,m);
     if(key==="phone") renderLensMarker();
+    markDirty();               // text reflows live as gear / box moves
   });
 
-  const end = (e)=>{
-    if(!mode) return;
-    mode=null; start=null;
-    try{ el.releasePointerCapture(e.pointerId); }catch(_){}
-    saveLast();
-  };
-  el.addEventListener("pointerup", end);
-  el.addEventListener("pointercancel", end);
+  const end=(e)=>{ if(!mode) return; mode=null; start=null; try{el.releasePointerCapture(e.pointerId);}catch(_){ } saveLast(); };
+  el.addEventListener("pointerup",end);
+  el.addEventListener("pointercancel",end);
 }
 
 /* ============================================================
    ALIGN TEXT TO LENS
    ============================================================ */
 function alignTextToLens(){
-  const ph = S.phone;
-  const {fx,fy} = lensLocalFraction(S.lensPos);
-  const cx = ph.x + ph.w/2, cy = ph.y + ph.h/2;
-  const localX = (fx-0.5)*ph.w, localY = (fy-0.5)*ph.h;
-  const r = rotatePoint(localX, localY, ph.rot);
-  const lensX = cx + r.x, lensY = cy + r.y;
-
-  const tb = S.textbox;
-  tb.rot = 0;
-  tb.x = Math.round(lensX - tb.w/2);
-  tb.y = Math.round(lensY + 26);         // sit just below the lens for tight eye-line
-  // keep on screen
-  tb.x = Math.max(8, Math.min(tb.x, window.innerWidth - tb.w - 8));
-  tb.y = Math.max(8, Math.min(tb.y, window.innerHeight - 80));
-  renderMovable(els.textbox, tb);
-  saveLast();
+  const ph=S.phone;
+  const {fx,fy}=lensLocalFraction(S.lensPos);
+  const cx=ph.x+ph.w/2, cy=ph.y+ph.h/2;
+  const r=rotatePoint((fx-0.5)*ph.w,(fy-0.5)*ph.h,ph.rot);
+  const lensX=cx+r.x, lensY=cy+r.y;
+  const tb=S.textbox; tb.rot=0;
+  // keep the box centred on the lens horizontally; text still flows around the gear
+  tb.x=Math.round(lensX-tb.w/2);
+  tb.x=Math.max(8,Math.min(tb.x,window.innerWidth-tb.w-8));
+  renderMovable(els.textbox,tb); markDirty(); saveLast();
 }
 
 /* ============================================================
-   AUTO-SCROLL LOOP + CONTROL SCHEMES
+   CONTROL SCHEMES
    ============================================================ */
-let lastTs = 0, acc = 0, hoverDir = 0; // hoverDir for scheme C: -1 up, 1 down, 0 pause
-
-function speedPx(){ return S.scroll.speed * 4; } // 1..100 -> 4..400 px/s
-
-function loop(ts){
-  const dt = lastTs ? (ts-lastTs)/1000 : 0;
-  lastTs = ts;
-  const scheme = S.scroll.scheme;
-  let dir = 0;
-
-  if(scheme==="C"){
-    if(liveModeOrPreview()) dir = hoverDir;   // hover controls scrolling directly
-  } else {
-    if(S.scroll.auto && !paused) dir = 1;
-  }
-
-  if(dir!==0 && dt>0){
-    acc += speedPx() * dt * dir;
-    const whole = acc>=0 ? Math.floor(acc) : Math.ceil(acc);
-    if(whole){ tpScroll.scrollTop += whole; acc -= whole; }
-  }
-  requestAnimationFrame(loop);
-}
-function liveModeOrPreview(){ return true; } // schemes are always active on the reader
-requestAnimationFrame(loop);
-
-/* Scheme B: wheel scrolls manually + pauses; middle-click resumes */
-tpScroll.addEventListener("wheel",(e)=>{
+tpViewport.addEventListener("wheel",(e)=>{
   if(S.scroll.scheme!=="B") return;
-  paused = true;
-  tpScroll.scrollTop += e.deltaY;
-  e.preventDefault();
+  paused=true; scrollY+=e.deltaY; clampScroll(); markDirty(); e.preventDefault();
 },{passive:false});
-tpScroll.addEventListener("auxclick",(e)=>{
+tpViewport.addEventListener("auxclick",(e)=>{
   if(S.scroll.scheme!=="B") return;
   if(e.button===1){ paused=false; S.scroll.auto=true; syncScrollUI(); }
 });
 document.addEventListener("mousedown",(e)=>{ if(e.button===1 && S.scroll.scheme==="B") e.preventDefault(); });
 
-/* Scheme C: hover zones over the text box */
 $("#textbox").addEventListener("mousemove",(e)=>{
   if(S.scroll.scheme!=="C") return;
-  const r = tpScroll.getBoundingClientRect();
-  const rel = (e.clientY - r.top)/r.height;
-  hoverDir = rel < 0.34 ? -1 : rel > 0.66 ? 1 : 0;
+  const r=tpViewport.getBoundingClientRect();
+  const rel=(e.clientY-r.top)/r.height;
+  hoverDir = rel<0.34?-1 : rel>0.66?1 : 0;
 });
-$("#textbox").addEventListener("mouseleave",()=>{ hoverDir = 0; });
+$("#textbox").addEventListener("mouseleave",()=>{ hoverDir=0; });
 
-/* Keyboard (scheme A) + global Escape */
 document.addEventListener("keydown",(e)=>{
-  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
   if(e.key==="Escape" && liveMode){ exitLive(); return; }
   if(typing) return;
-
   if(S.scroll.scheme==="A"){
     if(e.code==="Space"){ e.preventDefault(); toggleScroll(); }
     else if(e.key==="ArrowUp"){ e.preventDefault(); nudgeSpeed(4); }
     else if(e.key==="ArrowDown"){ e.preventDefault(); nudgeSpeed(-4); }
   }
 });
-
-function toggleScroll(){
-  if(S.scroll.scheme==="C") return; // hover-driven
-  S.scroll.auto = !S.scroll.auto;
-  paused = false;
-  syncScrollUI(); saveLast();
-}
-function nudgeSpeed(delta){
-  S.scroll.speed = Math.max(1, Math.min(100, S.scroll.speed+delta));
-  syncScrollUI(); saveLast();
-}
-function syncScrollUI(){
-  $("#autoScroll").checked = S.scroll.auto;
-  $("#scrollSpeed").value = S.scroll.speed;
-  $("#speedVal").textContent = S.scroll.speed;
-}
+function toggleScroll(){ if(S.scroll.scheme==="C") return; S.scroll.auto=!S.scroll.auto; paused=false; syncScrollUI(); saveLast(); }
+function nudgeSpeed(d){ S.scroll.speed=Math.max(1,Math.min(100,S.scroll.speed+d)); syncScrollUI(); saveLast(); }
+function syncScrollUI(){ $("#autoScroll").checked=S.scroll.auto; $("#scrollSpeed").value=S.scroll.speed; $("#speedVal").textContent=S.scroll.speed; }
 
 /* ============================================================
    LIVE MODE
    ============================================================ */
-const liveHint = $("#liveHint");
-let hintTimer=null;
-function enterLive(){
-  liveMode = true;
-  document.body.classList.add("live");
-  liveHint.classList.remove("hidden");
-  flashHint();
-  if(S.scroll.scheme!=="C" && S.scroll.auto){ paused=false; }
-}
-function exitLive(){
-  liveMode = false;
-  document.body.classList.remove("live","show-cursor");
-  liveHint.classList.add("hidden");
-}
-function flashHint(){
-  liveHint.style.opacity="1";
-  clearTimeout(hintTimer);
-  hintTimer=setTimeout(()=> liveHint.style.opacity="0", 2600);
-}
-$("#startBtn").addEventListener("click", enterLive);
-stage.addEventListener("dblclick", ()=>{ if(liveMode) exitLive(); });
-document.addEventListener("mousemove",()=>{
-  if(!liveMode) return;
-  document.body.classList.add("show-cursor");
-  flashHint();
-});
+const liveHint=$("#liveHint"); let hintTimer=null;
+function enterLive(){ liveMode=true; document.body.classList.add("live"); liveHint.classList.remove("hidden"); flashHint(); }
+function exitLive(){ liveMode=false; document.body.classList.remove("live","show-cursor"); liveHint.classList.add("hidden"); }
+function flashHint(){ liveHint.style.opacity="1"; clearTimeout(hintTimer); hintTimer=setTimeout(()=>liveHint.style.opacity="0",2600); }
+$("#startBtn").addEventListener("click",enterLive);
+stage.addEventListener("dblclick",()=>{ if(liveMode) exitLive(); });
+document.addEventListener("mousemove",()=>{ if(!liveMode) return; document.body.classList.add("show-cursor"); flashHint(); });
 
 /* ============================================================
    BACKLIGHT UI
    ============================================================ */
 function buildQuadControls(){
-  const wrap = $("#quadControls");
-  wrap.innerHTML="";
-  const names = ["Top-Left","Top-Right","Bottom-Left","Bottom-Right"];
+  const wrap=$("#quadControls"); wrap.innerHTML="";
+  const names=["Top-Left","Top-Right","Bottom-Left","Bottom-Right"];
   for(let i=0;i<4;i++){
-    const box = document.createElement("div");
-    box.className="space-y-1 quad-ctl";
-    box.dataset.idx=i;
-    const presetOpts = Object.keys(PRESETS).map(n=>`<option value="${PRESETS[n]}">${n}</option>`).join("");
-    box.innerHTML = `
-      <div class="field-label">${names[i]}</div>
+    const box=document.createElement("div"); box.className="space-y-1 quad-ctl"; box.dataset.idx=i;
+    const presetOpts=Object.keys(PRESETS).map(n=>`<option value="${PRESETS[n]}">${n}</option>`).join("");
+    box.innerHTML=`<div class="field-label">${names[i]}</div>
       <input type="color" data-qcolor="${i}" value="${S.backlight.quads[i]}" />
       <select data-qpreset="${i}"><option value="">Preset…</option>${presetOpts}</select>`;
     wrap.appendChild(box);
   }
-  wrap.querySelectorAll("[data-qcolor]").forEach(inp=>{
-    inp.addEventListener("input",(e)=>{
-      const i=+e.target.dataset.qcolor;
-      S.backlight.quads[i]=e.target.value;
-      renderBacklight(); saveLast();
-    });
-  });
-  wrap.querySelectorAll("[data-qpreset]").forEach(sel=>{
-    sel.addEventListener("change",(e)=>{
-      const i=+e.target.dataset.qpreset;
-      if(!e.target.value) return;
-      S.backlight.quads[i]=e.target.value;
-      wrap.querySelector(`[data-qcolor="${i}"]`).value=e.target.value;
-      renderBacklight(); saveLast();
-      e.target.value="";
-    });
-  });
+  wrap.querySelectorAll("[data-qcolor]").forEach(inp=> inp.addEventListener("input",e=>{
+    S.backlight.quads[+e.target.dataset.qcolor]=e.target.value; renderBacklight(); saveLast();
+  }));
+  wrap.querySelectorAll("[data-qpreset]").forEach(sel=> sel.addEventListener("change",e=>{
+    const i=+e.target.dataset.qpreset; if(!e.target.value) return;
+    S.backlight.quads[i]=e.target.value;
+    wrap.querySelector(`[data-qcolor="${i}"]`).value=e.target.value;
+    renderBacklight(); saveLast(); e.target.value="";
+  }));
   applyLayoutDisabling();
 }
-
 function applyLayoutDisabling(){
-  const active = {
-    "1":[0], "2v":[0,1], "2h":[0,2], "4":[0,1,2,3]
-  }[S.backlight.layout];
-  $$(".quad-ctl").forEach(ctl=>{
-    const i=+ctl.dataset.idx;
-    ctl.classList.toggle("disabledZone", !active.includes(i));
-  });
+  const active={ "1":[0],"2v":[0,1],"2h":[0,2],"4":[0,1,2,3] }[S.backlight.layout];
+  $$(".quad-ctl").forEach(ctl=> ctl.classList.toggle("disabledZone", !active.includes(+ctl.dataset.idx)));
 }
-
-function syncQuadInputs(){
-  $$("[data-qcolor]").forEach(inp=> inp.value = S.backlight.quads[+inp.dataset.qcolor]);
-}
+function syncQuadInputs(){ $$("[data-qcolor]").forEach(inp=> inp.value=S.backlight.quads[+inp.dataset.qcolor]); }
 
 /* ============================================================
-   PROFILES (layout, not script text)
+   PROFILES
    ============================================================ */
-function snapshot(){
-  return JSON.parse(JSON.stringify({
-    pole:S.pole, phone:S.phone, textbox:S.textbox, lensPos:S.lensPos,
-    font:S.font, scroll:S.scroll, backlight:S.backlight
-  }));
-}
-function applySnapshot(snap){
-  S = Object.assign(defaultState(), JSON.parse(JSON.stringify(snap)));
-  renderAll(); syncAllControls();
-}
-function readStore(key){ try{ return JSON.parse(localStorage.getItem(key)||"{}"); }catch(_){ return {}; } }
-function writeStore(key,obj){ localStorage.setItem(key, JSON.stringify(obj)); }
+function snapshot(){ return JSON.parse(JSON.stringify({ pole:S.pole,phone:S.phone,textbox:S.textbox,lensPos:S.lensPos,font:S.font,scroll:S.scroll,backlight:S.backlight })); }
+function applySnapshot(snap){ S=Object.assign(defaultState(),JSON.parse(JSON.stringify(snap))); renderNonText(); syncAllControls(); markDirty(); }
+function readStore(k){ try{ return JSON.parse(localStorage.getItem(k)||"{}"); }catch(_){ return {}; } }
+function writeStore(k,o){ localStorage.setItem(k,JSON.stringify(o)); }
 
 function refreshProfileList(sel){
-  const store = readStore(LS.profiles);
-  const dd = $("#profileSelect");
-  dd.innerHTML = '<option value="">— Select a profile —</option>';
-  Object.keys(store).sort().forEach(n=>{
-    const o=document.createElement("option"); o.value=n; o.textContent=n; dd.appendChild(o);
-  });
+  const store=readStore(LS.profiles), dd=$("#profileSelect");
+  dd.innerHTML='<option value="">— Select a profile —</option>';
+  Object.keys(store).sort().forEach(n=>{ const o=document.createElement("option"); o.value=n; o.textContent=n; dd.appendChild(o); });
   if(sel) dd.value=sel;
 }
 $("#saveProfile").addEventListener("click",()=>{
-  const name = $("#profileName").value.trim();
-  if(!name){ $("#profileName").focus(); return; }
-  const store = readStore(LS.profiles);
-  store[name]=snapshot(); writeStore(LS.profiles,store);
+  const name=$("#profileName").value.trim(); if(!name){ $("#profileName").focus(); return; }
+  const store=readStore(LS.profiles); store[name]=snapshot(); writeStore(LS.profiles,store);
   $("#profileName").value=""; refreshProfileList(name);
 });
 $("#loadProfile").addEventListener("click",()=>{
   const name=$("#profileSelect").value; if(!name) return;
-  const store=readStore(LS.profiles);
-  if(store[name]){ applySnapshot(store[name]); saveLast(); }
+  const store=readStore(LS.profiles); if(store[name]){ applySnapshot(store[name]); saveLast(); }
 });
 $("#deleteProfile").addEventListener("click",()=>{
   const name=$("#profileSelect").value; if(!name) return;
-  const store=readStore(LS.profiles); delete store[name]; writeStore(LS.profiles,store);
-  refreshProfileList();
+  const store=readStore(LS.profiles); delete store[name]; writeStore(LS.profiles,store); refreshProfileList();
 });
 
 /* ============================================================
    SCRIPT LIBRARY (named)
    ============================================================ */
 function refreshScriptList(sel){
-  const store=readStore(LS.scripts);
-  const dd=$("#scriptSelect");
+  const store=readStore(LS.scripts), dd=$("#scriptSelect");
   dd.innerHTML='<option value="">— Select a saved script —</option>';
-  Object.keys(store).sort().forEach(n=>{
-    const o=document.createElement("option"); o.value=n; o.textContent=n; dd.appendChild(o);
-  });
+  Object.keys(store).sort().forEach(n=>{ const o=document.createElement("option"); o.value=n; o.textContent=n; dd.appendChild(o); });
   if(sel) dd.value=sel;
 }
 $("#saveScript").addEventListener("click",()=>{
-  const name=$("#scriptName").value.trim();
-  if(!name){ $("#scriptName").focus(); return; }
-  const store=readStore(LS.scripts);
-  store[name]=$("#scriptInput").value;
-  writeStore(LS.scripts,store);
-  $("#scriptName").value="";
-  refreshScriptList(name);
+  const name=$("#scriptName").value.trim(); if(!name){ $("#scriptName").focus(); return; }
+  const store=readStore(LS.scripts); store[name]=$("#scriptInput").value; writeStore(LS.scripts,store);
+  $("#scriptName").value=""; refreshScriptList(name);
 });
 $("#loadScript").addEventListener("click",()=>{
   const name=$("#scriptSelect").value; if(!name) return;
   const store=readStore(LS.scripts);
-  if(typeof store[name]==="string"){
-    $("#scriptInput").value=store[name];
-    scriptText=store[name];
-    tpScroll.scrollTop=0;
-    renderText(); saveLast();
-  }
+  if(typeof store[name]==="string"){ $("#scriptInput").value=store[name]; scriptText=store[name]; scrollY=minScroll(); markDirty(); saveLast(); }
 });
 $("#deleteScript").addEventListener("click",()=>{
   const name=$("#scriptSelect").value; if(!name) return;
-  const store=readStore(LS.scripts); delete store[name]; writeStore(LS.scripts,store);
-  refreshScriptList();
+  const store=readStore(LS.scripts); delete store[name]; writeStore(LS.scripts,store); refreshScriptList();
 });
 
 /* ============================================================
    CONTROL BINDINGS
    ============================================================ */
-$("#scriptInput").addEventListener("input",(e)=>{ scriptText=e.target.value; renderText(); saveLast(); });
+$("#scriptInput").addEventListener("input",e=>{ scriptText=e.target.value; markDirty(); saveLast(); });
 
-$("#fontSize").addEventListener("input",(e)=>{ S.font.size=+e.target.value; $("#fontVal").textContent=e.target.value+"px"; renderText(); saveLast(); });
-$("#lineHeight").addEventListener("input",(e)=>{ S.font.lineHeight=+e.target.value; $("#lhVal").textContent=(+e.target.value).toFixed(2); renderText(); saveLast(); });
-$("#tpBg").addEventListener("input",(e)=>{ S.font.bgDim=+e.target.value; $("#bgVal").textContent=e.target.value+"%"; renderText(); saveLast(); });
+$("#fontSize").addEventListener("input",e=>{ S.font.size=+e.target.value; $("#fontVal").textContent=e.target.value+"px"; markDirty(); saveLast(); });
+$("#lineHeight").addEventListener("input",e=>{ S.font.lineHeight=+e.target.value; $("#lhVal").textContent=(+e.target.value).toFixed(2); markDirty(); saveLast(); });
+$("#tpBg").addEventListener("input",e=>{ S.font.bgDim=+e.target.value; $("#bgVal").textContent=e.target.value+"%"; $("#textbox").style.setProperty("--tp-bg",(S.font.bgDim/100).toString()); saveLast(); });
+$("#wrapGear").addEventListener("change",e=>{ S.font.wrapGear=e.target.checked; markDirty(); saveLast(); });
 $$(".align-btn").forEach(b=> b.addEventListener("click",()=>{
-  S.font.align=b.dataset.align;
-  $$(".align-btn").forEach(x=>x.classList.toggle("active",x===b));
-  renderText(); saveLast();
+  S.font.align=b.dataset.align; $$(".align-btn").forEach(x=>x.classList.toggle("active",x===b)); markDirty(); saveLast();
 }));
 
-$("#autoScroll").addEventListener("change",(e)=>{ S.scroll.auto=e.target.checked; paused=false; saveLast(); });
-$("#scrollSpeed").addEventListener("input",(e)=>{ S.scroll.speed=+e.target.value; $("#speedVal").textContent=e.target.value; saveLast(); });
-$("#scheme").addEventListener("change",(e)=>{ S.scroll.scheme=e.target.value; updateSchemeHelp(); saveLast(); });
-$("#rewindBtn").addEventListener("click",()=>{ tpScroll.scrollTop=0; acc=0; });
+$("#autoScroll").addEventListener("change",e=>{ S.scroll.auto=e.target.checked; paused=false; saveLast(); });
+$("#scrollSpeed").addEventListener("input",e=>{ S.scroll.speed=+e.target.value; $("#speedVal").textContent=e.target.value; saveLast(); });
+$("#scheme").addEventListener("change",e=>{ S.scroll.scheme=e.target.value; updateSchemeHelp(); saveLast(); });
+$("#rewindBtn").addEventListener("click",()=>{ scrollY=minScroll(); acc=0; markDirty(); });
 
-$("#intensity").addEventListener("input",(e)=>{ S.backlight.intensity=+e.target.value; $("#intVal").textContent=e.target.value+"%"; renderBacklight(); saveLast(); });
-$("#blLayout").addEventListener("change",(e)=>{ S.backlight.layout=e.target.value; applyLayoutDisabling(); renderBacklight(); saveLast(); });
+$("#intensity").addEventListener("input",e=>{ S.backlight.intensity=+e.target.value; $("#intVal").textContent=e.target.value+"%"; renderBacklight(); saveLast(); });
+$("#blLayout").addEventListener("change",e=>{ S.backlight.layout=e.target.value; applyLayoutDisabling(); renderBacklight(); saveLast(); });
 
-$("#lensPos").addEventListener("change",(e)=>{ S.lensPos=e.target.value; renderLensMarker(); saveLast(); });
-$("#alignBtn").addEventListener("click", alignTextToLens);
-$("#resetPole").addEventListener("click",()=>{ S.pole=defaultState().pole; renderMovable(els.pole,S.pole); saveLast(); });
-$("#resetPhone").addEventListener("click",()=>{ S.phone=defaultState().phone; renderMovable(els.phone,S.phone); renderLensMarker(); saveLast(); });
+$("#lensPos").addEventListener("change",e=>{ S.lensPos=e.target.value; renderLensMarker(); saveLast(); });
+$("#alignBtn").addEventListener("click",alignTextToLens);
+$("#resetPole").addEventListener("click",()=>{ S.pole=defaultState().pole; renderMovable(els.pole,S.pole); markDirty(); saveLast(); });
+$("#resetPhone").addEventListener("click",()=>{ S.phone=defaultState().phone; renderMovable(els.phone,S.phone); renderLensMarker(); markDirty(); saveLast(); });
 
-/* Sidebar collapse */
 function setSidebar(open){ $("#sidebar").classList.toggle("collapsed",!open); }
-$("#hideSidebar").addEventListener("click",()=> setSidebar(false));
-$("#collapseBtn").addEventListener("click",()=> setSidebar($("#sidebar").classList.contains("collapsed")));
+$("#hideSidebar").addEventListener("click",()=>setSidebar(false));
+$("#collapseBtn").addEventListener("click",()=>setSidebar($("#sidebar").classList.contains("collapsed")));
 
 function updateSchemeHelp(){
   const map={
@@ -819,7 +826,7 @@ function updateSchemeHelp(){
     B:"Scroll wheel over the text scrubs & pauses auto-scroll • middle-click resumes.",
     C:"Hover the text box: top third scrolls up, bottom scrolls down, middle pauses."
   };
-  $("#schemeHelp").textContent = map[S.scroll.scheme];
+  $("#schemeHelp").textContent=map[S.scroll.scheme];
 }
 
 /* ============================================================
@@ -829,6 +836,8 @@ function syncAllControls(){
   $("#fontSize").value=S.font.size; $("#fontVal").textContent=S.font.size+"px";
   $("#lineHeight").value=S.font.lineHeight; $("#lhVal").textContent=(+S.font.lineHeight).toFixed(2);
   $("#tpBg").value=S.font.bgDim; $("#bgVal").textContent=S.font.bgDim+"%";
+  $("#textbox").style.setProperty("--tp-bg",(S.font.bgDim/100).toString());
+  $("#wrapGear").checked=S.font.wrapGear!==false;
   $$(".align-btn").forEach(x=>x.classList.toggle("active",x.dataset.align===S.font.align));
   syncScrollUI();
   $("#scheme").value=S.scroll.scheme; updateSchemeHelp();
@@ -839,51 +848,36 @@ function syncAllControls(){
 }
 
 /* ============================================================
-   PERSISTENCE (last session)
+   PERSISTENCE
    ============================================================ */
 let saveTimer=null;
-function saveLast(){
-  clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{
-    localStorage.setItem(LS.last, JSON.stringify({ state:snapshot(), script:scriptText }));
-  },150);
-}
+function saveLast(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ localStorage.setItem(LS.last,JSON.stringify({state:snapshot(),script:scriptText})); },150); }
 
 /* ============================================================
    BOOT
    ============================================================ */
-function seedDefaultProfile(){
-  const store=readStore(LS.profiles);
-  if(!store["Default Profile"]){
-    store["Default Profile"]=snapshot();
-    writeStore(LS.profiles,store);
-  }
-}
+function seedDefaultProfile(){ const store=readStore(LS.profiles); if(!store["Default Profile"]){ store["Default Profile"]=snapshot(); writeStore(LS.profiles,store); } }
 
 function boot(){
-  // restore last session if present
   try{
     const last=JSON.parse(localStorage.getItem(LS.last)||"null");
-    if(last && last.state){
-      S = Object.assign(defaultState(), last.state);
-      scriptText = last.script || "";
-    }
+    if(last && last.state){ S=Object.assign(defaultState(),last.state); if(S.font.wrapGear===undefined) S.font.wrapGear=true; scriptText=last.script||""; }
   }catch(_){}
-
-  $("#scriptInput").value = scriptText;
+  $("#scriptInput").value=scriptText;
   buildQuadControls();
-  renderAll();
+  renderNonText();
   syncAllControls();
   seedDefaultProfile();
   refreshProfileList();
   refreshScriptList();
+  scrollY=minScroll();
+  markDirty();
 
-  makeInteractive(els.pole,  "pole",    { resize:true, rotate:true, minW:8,  minH:20 });
-  makeInteractive(els.phone, "phone",   { resize:true, rotate:true, minW:40, minH:60 });
-  makeInteractive(els.textbox,"textbox",{ resize:true, rotate:false, minW:120, minH:80 });
+  makeInteractive(els.textbox,"textbox",{resize:true,rotate:false,minW:140,minH:100});
+  makeInteractive(els.pole,"pole",{resize:true,rotate:true,minW:8,minH:20});
+  makeInteractive(els.phone,"phone",{resize:true,rotate:true,minW:40,minH:60});
 }
-
-window.addEventListener("resize", ()=>{ /* keep positions absolute; nothing forced */ });
+window.addEventListener("resize",()=>{ markDirty(); });
 boot();
 </script>
 </body>
