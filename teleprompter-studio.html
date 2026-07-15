@@ -196,10 +196,24 @@
         <div class="flex justify-between field-label"><span>Text panel dim</span><span id="bgVal">35%</span></div>
         <input type="range" id="tpBg" min="0" max="90" step="1" value="35" />
       </div>
-      <label class="flex items-center justify-between">
-        <span class="text-sm">Flow text around gear</span>
-        <input type="checkbox" id="wrapGear" class="w-4 h-4 accent-emerald-500" checked />
-      </label>
+      <div>
+        <div class="field-label mb-1">Reading layout</div>
+        <select id="readMode">
+          <option value="stable">Around gear — steady gap</option>
+          <option value="single">Single column beside gear</option>
+          <option value="dynamic">Around gear — dynamic flow</option>
+          <option value="full">Full width (ignore gear)</option>
+        </select>
+        <p class="text-[11px] text-slate-500 mt-1">"Steady gap" and "single column" keep a fixed layout so text never shifts sideways as it scrolls past the phone.</p>
+      </div>
+      <div id="readSideWrap">
+        <div class="field-label mb-1">Reading side</div>
+        <select id="readSide">
+          <option value="auto">Auto (widest clear side)</option>
+          <option value="left">Left of gear</option>
+          <option value="right">Right of gear</option>
+        </select>
+      </div>
 
       <hr class="border-slate-800" />
 
@@ -319,7 +333,7 @@ function defaultState(){
     phone: { x: cx-phW/2,   y: Math.round(H*0.07), w: phW,  h: phH,  rot: 0 },
     textbox:{ x: cx-tbW/2,  y: Math.round(H*0.10), w: tbW,  h: tbH,  rot: 0 },
     lensPos: "center-top",
-    font: { size:44, lineHeight:1.4, align:"center", bgDim:35, wrapGear:true },
+    font: { size:44, lineHeight:1.4, align:"center", bgDim:35, readMode:"stable", readSide:"auto" },
     scroll:{ auto:false, speed:60, scheme:"A" },
     backlight:{ intensity:70, layout:"1", quads:["#eaf1ff","#eaf1ff","#eaf1ff","#eaf1ff"] }
   };
@@ -427,17 +441,18 @@ function measureWord(w){
   return v;
 }
 
+function aabbOf(m,PAD){
+  const cx=m.x+m.w/2, cy=m.y+m.h/2;
+  const pts=[[-m.w/2,-m.h/2],[m.w/2,-m.h/2],[m.w/2,m.h/2],[-m.w/2,m.h/2]]
+    .map(([x,y])=>{ const r=rotatePoint(x,y,m.rot); return {x:cx+r.x,y:cy+r.y}; });
+  const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+  return { left:Math.min.apply(null,xs)-PAD, right:Math.max.apply(null,xs)+PAD,
+           top:Math.min.apply(null,ys)-PAD, bottom:Math.max.apply(null,ys)+PAD };
+}
 function obstacleAABBs(){
-  if(!S.font.wrapGear) return [];
+  if((S.font.readMode||"stable")==="full") return [];
   const PAD=14;
-  return [S.pole,S.phone].map(m=>{
-    const cx=m.x+m.w/2, cy=m.y+m.h/2;
-    const pts=[[-m.w/2,-m.h/2],[m.w/2,-m.h/2],[m.w/2,m.h/2],[-m.w/2,m.h/2]]
-      .map(([x,y])=>{ const r=rotatePoint(x,y,m.rot); return {x:cx+r.x,y:cy+r.y}; });
-    const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
-    return { left:Math.min.apply(null,xs)-PAD, right:Math.max.apply(null,xs)+PAD,
-             top:Math.min.apply(null,ys)-PAD, bottom:Math.max.apply(null,ys)+PAD };
-  });
+  return [S.pole,S.phone].map(m=>aabbOf(m,PAD));
 }
 
 function subtractInterval(segs,L,R){
@@ -457,10 +472,34 @@ function relayout(){
   const lh=S.font.size*S.font.lineHeight;
   const SIDE=Math.max(10, S.font.size*0.35);
   const contentLeft=SIDE, contentRight=box.w-SIDE;
-  const obs=obstacleAABBs();
+  const mode=S.font.readMode||"stable";
   const align=S.font.align;
   const spaceW=measureWord(" ")||S.font.size*0.28;
 
+  /* Fixed, scroll-independent segments for stable / single / full modes.
+     Because these do NOT change with scrollY, a given word keeps the same x
+     the entire time it is on screen — it just rises. No sideways jump, no
+     "reconnect" as it passes the phone. Only "dynamic" mode recomputes per
+     scroll band (the original behaviour, kept as an option). */
+  let fixedSegs=[[contentLeft,contentRight]];
+  if(mode!=="full"){
+    const PAD=14;
+    for(const m of [S.pole,S.phone]){
+      const a=aabbOf(m,PAD);
+      fixedSegs=subtractInterval(fixedSegs, a.left-box.x, a.right-box.x);
+    }
+  }
+  if(!fixedSegs.length) fixedSegs=[[contentLeft,contentRight]];
+  if(mode==="single"){
+    const side=S.font.readSide||"auto";
+    let lane;
+    if(side==="left") lane=fixedSegs[0];
+    else if(side==="right") lane=fixedSegs[fixedSegs.length-1];
+    else lane=fixedSegs.reduce((p,c)=> (c[1]-c[0])>(p[1]-p[0])?c:p);
+    fixedSegs=[lane];
+  }
+
+  const obs = mode==="dynamic" ? obstacleAABBs() : null;
   const paras=(scriptText||PLACEHOLDER).split("\n");
   const placements=[];
   let docY=0;
@@ -476,16 +515,19 @@ function relayout(){
     while(wi<words.length || firstLineOfPara){
       firstLineOfPara=false;
       const lineLocalTop = docY - scrollY;           // relative to box top
-      const screenTop = box.y + lineLocalTop;
-      const screenBot = screenTop + lh;
 
-      // build available horizontal segments for this line's screen band
-      let segs=[[contentLeft,contentRight]];
-      for(const o of obs){
-        if(o.bottom<=screenTop || o.top>=screenBot) continue;
-        const oL=o.left-box.x, oR=o.right-box.x;
-        segs=subtractInterval(segs,oL,oR);
-        if(!segs.length) break;
+      let segs;
+      if(mode==="dynamic"){
+        const screenTop = box.y + lineLocalTop;
+        const screenBot = screenTop + lh;
+        segs=[[contentLeft,contentRight]];
+        for(const o of obs){
+          if(o.bottom<=screenTop || o.top>=screenBot) continue;
+          segs=subtractInterval(segs,o.left-box.x,o.right-box.x);
+          if(!segs.length) break;
+        }
+      } else {
+        segs=fixedSegs;
       }
 
       const visible = lineLocalTop > -lh*1.5 && lineLocalTop < viewH+lh;
@@ -798,7 +840,8 @@ $("#scriptInput").addEventListener("input",e=>{ scriptText=e.target.value; markD
 $("#fontSize").addEventListener("input",e=>{ S.font.size=+e.target.value; $("#fontVal").textContent=e.target.value+"px"; markDirty(); saveLast(); });
 $("#lineHeight").addEventListener("input",e=>{ S.font.lineHeight=+e.target.value; $("#lhVal").textContent=(+e.target.value).toFixed(2); markDirty(); saveLast(); });
 $("#tpBg").addEventListener("input",e=>{ S.font.bgDim=+e.target.value; $("#bgVal").textContent=e.target.value+"%"; $("#textbox").style.setProperty("--tp-bg",(S.font.bgDim/100).toString()); saveLast(); });
-$("#wrapGear").addEventListener("change",e=>{ S.font.wrapGear=e.target.checked; markDirty(); saveLast(); });
+$("#readMode").addEventListener("change",e=>{ S.font.readMode=e.target.value; updateReadSideVis(); markDirty(); saveLast(); });
+$("#readSide").addEventListener("change",e=>{ S.font.readSide=e.target.value; markDirty(); saveLast(); });
 $$(".align-btn").forEach(b=> b.addEventListener("click",()=>{
   S.font.align=b.dataset.align; $$(".align-btn").forEach(x=>x.classList.toggle("active",x===b)); markDirty(); saveLast();
 }));
@@ -820,6 +863,7 @@ function setSidebar(open){ $("#sidebar").classList.toggle("collapsed",!open); }
 $("#hideSidebar").addEventListener("click",()=>setSidebar(false));
 $("#collapseBtn").addEventListener("click",()=>setSidebar($("#sidebar").classList.contains("collapsed")));
 
+function updateReadSideVis(){ $("#readSideWrap").style.display=(S.font.readMode==="single")?"block":"none"; }
 function updateSchemeHelp(){
   const map={
     A:"Space = play/pause • ↑/↓ = speed. Works anywhere on screen.",
@@ -837,7 +881,9 @@ function syncAllControls(){
   $("#lineHeight").value=S.font.lineHeight; $("#lhVal").textContent=(+S.font.lineHeight).toFixed(2);
   $("#tpBg").value=S.font.bgDim; $("#bgVal").textContent=S.font.bgDim+"%";
   $("#textbox").style.setProperty("--tp-bg",(S.font.bgDim/100).toString());
-  $("#wrapGear").checked=S.font.wrapGear!==false;
+  $("#readMode").value=S.font.readMode||"stable";
+  $("#readSide").value=S.font.readSide||"auto";
+  updateReadSideVis();
   $$(".align-btn").forEach(x=>x.classList.toggle("active",x.dataset.align===S.font.align));
   syncScrollUI();
   $("#scheme").value=S.scroll.scheme; updateSchemeHelp();
@@ -861,7 +907,12 @@ function seedDefaultProfile(){ const store=readStore(LS.profiles); if(!store["De
 function boot(){
   try{
     const last=JSON.parse(localStorage.getItem(LS.last)||"null");
-    if(last && last.state){ S=Object.assign(defaultState(),last.state); if(S.font.wrapGear===undefined) S.font.wrapGear=true; scriptText=last.script||""; }
+    if(last && last.state){
+      S=Object.assign(defaultState(),last.state);
+      if(!S.font.readMode) S.font.readMode = (S.font.wrapGear===false ? "full" : "stable");
+      if(!S.font.readSide) S.font.readSide = "auto";
+      scriptText=last.script||"";
+    }
   }catch(_){}
   $("#scriptInput").value=scriptText;
   buildQuadControls();
