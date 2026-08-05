@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crooked Coin Apparel — Built for the Misfits</title>
+<meta name="description" content="Crooked Coin Apparel is coming. Premium apparel inspired by blue-collar grit, custom culture, and people who never fit the mold. Vote on the first drop.">
+
+<!-- ============================================================
+     CROOKED COIN — PRE-LAUNCH TEASER / VOTING PAGE
+     Single-file demo build. Drop this folder into a GitHub repo
+     (keep index.html next to /images) and it just works — no
+     build step, no server, no dependencies beyond Google Fonts.
+
+     Things to swap before this goes live for real:
+       1. SOCIAL LINKS  -> there are 12 placeholder links to replace:
+          TikTok/Instagram/YouTube/Facebook in the nav, the same 4
+          again in the footer, and once more as the 4 chips in the
+          "Follow The Founding" section. Replace each href="#" with
+          a real profile URL.
+       2. VOTE DESIGNS  -> search "DESIGNS" in the JS below
+          (add a new object to the array and a new locked card
+          appears automatically — no HTML editing needed)
+       3. Favicon / OG image -> currently using images/coin.png
+       4. Voting is stored in the visitor's own browser
+          (localStorage) so it survives refreshes for a demo,
+          but does NOT sync between visitors. Hook it up to a
+          real database + API before this goes live.
+     ============================================================ -->
+
+<link rel="icon" href="images/coin.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* =================== TOKENS =================== */
+:root{
+  --ink:        #0a0908;   /* base background, soot black   */
+  --char:       #17140f;   /* panel / card background       */
+  --char-2:     #201b14;   /* raised panel                  */
+  --bone:       #ece3d2;   /* primary text                  */
+  --bone-dim:   #b8ac96;   /* secondary text                */
+  --brass:      #cba24e;   /* primary gold accent           */
+  --brass-hi:   #f0d38a;   /* bright gold highlight          */
+  --brass-dim:  #7c6631;   /* dark gold / borders            */
+  --ember:      #d1481f;   /* spark / CTA / vote accent      */
+  --ember-hi:   #ff8a3d;   /* bright ember highlight          */
+  --rust:       #4a1f16;   /* deep shadow red                */
+
+  --f-display:  'Bebas Neue', sans-serif;
+  --f-body:     'Oswald', sans-serif;
+
+  --container:  1180px;
+  --edge:       clamp(20px, 6vw, 64px);
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+@media (prefers-reduced-motion: reduce){
+  html{ scroll-behavior:auto; }
+  *,*::before,*::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+}
+
+body{
+  margin:0;
+  background:var(--ink);
+  color:var(--bone);
+  font-family:var(--f-body);
+  font-weight:300;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+img{ max-width:100%; display:block; }
+a{ color:inherit; }
+h1,h2,h3,p{ margin:0; }
+button{ font-family:inherit; }
+
+::selection{ background:var(--ember); color:var(--bone); }
+
+::-webkit-scrollbar{ width:10px; }
+::-webkit-scrollbar-track{ background:var(--ink); }
+::-webkit-scrollbar-thumb{ background:var(--brass-dim); border-radius:0; }
+
+:focus-visible{ outline:2px solid var(--brass); outline-offset:3px; }
+
+.container{ max-width:var(--container); margin:0 auto; padding-inline:var(--edge); }
+
+/* film-grain overlay, sits above everything, ignores clicks */
+.grain{
+  position:fixed; top:0; right:0; bottom:0; left:0; z-index:9999; pointer-events:none;
+  opacity:.05; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+/* soft vignette that follows the whole page */
+.vignette{
+  position:fixed; top:0; right:0; bottom:0; left:0; z-index:9998; pointer-events:none;
+  box-shadow: inset 0 0 18vw 2vw rgba(0,0,0,.65);
+}
+
+/* =================== TYPE HELPERS =================== */
+.eyebrow{
+  font-family:var(--f-body); font-weight:600; letter-spacing:.32em;
+  text-transform:uppercase; font-size:.72rem; color:var(--ember-hi);
+  display:inline-flex; align-items:center; gap:.6em;
+}
+.eyebrow::before{
+  content:""; width:22px; height:1px; background:var(--ember-hi); display:inline-block;
+}
+
+.stamped{
+  font-family:var(--f-display);
+  text-transform:uppercase;
+  letter-spacing:.03em;
+  position:relative;
+  color:var(--bone); /* solid fallback — always legible even without gradient-text support */
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.5)) drop-shadow(0 6px 14px rgba(0,0,0,.65));
+}
+@supports ((background-clip:text) or (-webkit-background-clip:text)){
+  .stamped{
+    background:linear-gradient(180deg, var(--brass-hi) 0%, var(--brass) 45%, var(--brass-dim) 100%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;
+  }
+}
+/* =================== RIVETED SEAM (signature divider) =================== */
+.seam{
+  height:26px;
+  position:relative; z-index:5;
+  background-image:
+    radial-gradient(circle 3.4px at 30px 50%, var(--brass-hi) 0%, var(--brass) 40%, #2c220f 60%, transparent 64%),
+    linear-gradient(180deg,#000 0%, #2c2519 18%, #362c1d 50%, #1c160d 82%, #000 100%);
+  background-size:60px 100%, 100% 100%;
+  background-repeat:repeat-x, no-repeat;
+  box-shadow: inset 0 3px 5px rgba(0,0,0,.65), inset 0 -3px 5px rgba(0,0,0,.65);
+}
+@media (max-width:640px){ .seam{ height:18px; background-size:38px 100%, 100% 100%; } }
+
+/* =================== NAV =================== */
+.nav{
+  position:fixed; top:0; left:0; right:0; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px var(--edge);
+  background:linear-gradient(180deg, rgba(0,0,0,.55), transparent);
+  transition:background .35s ease, box-shadow .35s ease, padding .35s ease;
+}
+.nav.is-scrolled{
+  background:rgba(10,9,8,.88);
+  backdrop-filter:blur(8px);
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+  padding-block:10px;
+}
+.nav__brand{ display:flex; align-items:center; gap:10px; text-decoration:none; }
+.nav__brand img{ height:34px; width:auto; }
+.nav__brand span{
+  font-family:var(--f-display); letter-spacing:.06em; font-size:1.15rem; color:var(--bone);
+}
+.nav__social{ display:flex; gap:8px; }
+.badge-link{
+  width:32px; height:32px; border-radius:50%;
+  border:1px solid var(--brass-dim);
+  display:flex; align-items:center; justify-content:center;
+  font-size:.55rem; font-weight:700; letter-spacing:.02em;
+  color:var(--brass); text-decoration:none;
+  background:rgba(203,162,78,.06);
+  transition:transform .25s ease, background .25s ease, border-color .25s ease, color .25s ease;
+}
+.badge-link:hover{ transform:translateY(-2px); background:var(--ember); border-color:var(--ember); color:var(--bone); }
+
+/* =================== HERO =================== */
+.hero{
+  position:relative; min-height:100vh; min-height:100svh; display:flex; align-items:center; justify-content:center;
+  overflow:hidden; text-align:center;
+}
+.hero__bg{ position:absolute; top:-8%; right:-8%; bottom:-8%; left:-8%; z-index:0; will-change:transform; }
+.hero__bg img{ width:100%; height:100%; object-fit:cover; object-position:30% 40%; transform:scale(1.1); filter:saturate(1.05) contrast(1.05); }
+.hero__scrim{
+  position:absolute; top:0; right:0; bottom:0; left:0; z-index:1;
+  background:
+    radial-gradient(120% 90% at 50% 30%, rgba(10,9,8,.15) 0%, rgba(10,9,8,.72) 62%, rgba(10,9,8,.94) 100%),
+    linear-gradient(180deg, rgba(10,9,8,.55) 0%, rgba(10,9,8,.25) 30%, rgba(10,9,8,.55) 70%, rgba(10,9,8,.98) 100%);
+}
+.hero__spark{
+  position:absolute; z-index:1; left:14%; top:44%; width:70vw; height:70vw; max-width:900px; max-height:900px;
+  background:radial-gradient(circle, rgba(255,190,110,.9) 0%, rgba(255,140,50,.35) 22%, transparent 60%);
+  opacity:0; pointer-events:none;
+}
+body.loaded .hero__spark{ animation:sparkFlash 1.4s ease-out .1s forwards; }
+@keyframes sparkFlash{
+  0%{ opacity:0; transform:scale(.4); }
+  18%{ opacity:1; transform:scale(1); }
+  100%{ opacity:0; transform:scale(1.3); }
+}
+
+.hero__content{ position:relative; z-index:2; padding:0 var(--edge); display:flex; flex-direction:column; align-items:center; gap:22px; }
+.hero__mark{
+  width:min(72vw, 460px);
+  opacity:0; transform:translateY(18px) scale(.97);
+  filter:drop-shadow(0 10px 30px rgba(0,0,0,.6));
+}
+body.loaded .hero__mark{ animation:markIn 1.1s cubic-bezier(.2,.8,.2,1) .5s forwards; }
+@keyframes markIn{ to{ opacity:1; transform:translateY(0) scale(1); } }
+
+.hero__tag{
+  font-family:var(--f-body); font-weight:500; letter-spacing:.34em; text-transform:uppercase;
+  font-size:clamp(.72rem, 1.6vw, .95rem); color:var(--brass-hi);
+  opacity:0; transform:translateY(14px);
+}
+body.loaded .hero__tag{ animation:fadeUp .8s ease .95s forwards; }
+
+.hero__copy{
+  max-width:560px; color:var(--bone-dim); font-size:clamp(.95rem,1.6vw,1.05rem);
+  opacity:0; transform:translateY(14px);
+}
+body.loaded .hero__copy{ animation:fadeUp .8s ease 1.15s forwards; }
+
+.hero__cta{
+  margin-top:6px; display:inline-flex; align-items:center; gap:12px;
+  opacity:0; transform:translateY(14px);
+}
+body.loaded .hero__cta{ animation:fadeUp .8s ease 1.35s forwards; }
+
+@keyframes fadeUp{ to{ opacity:1; transform:translateY(0); } }
+
+.btn{
+  --btn-bg: var(--ember);
+  font-family:var(--f-body); font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+  font-size:.82rem; color:var(--bone); background:var(--btn-bg); border:none;
+  padding:15px 30px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:10px;
+  position:relative; isolation:isolate; overflow:hidden;
+  clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);
+  transition:transform .25s ease, box-shadow .25s ease, filter .25s ease;
+  box-shadow:0 8px 22px rgba(209,72,31,.28);
+}
+.btn:hover{ transform:translateY(-2px); filter:brightness(1.08); box-shadow:0 12px 28px rgba(209,72,31,.4); }
+.btn:active{ transform:translateY(0); }
+.btn--ghost{ --btn-bg:transparent; color:var(--brass); box-shadow:none; border:1px solid var(--brass-dim); clip-path:none; }
+.btn--ghost:hover{ background:rgba(203,162,78,.08); }
+
+.scrollcue{
+  position:absolute; z-index:2; bottom:28px; left:50%; transform:translateX(-50%);
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  color:var(--bone-dim); font-size:.65rem; letter-spacing:.28em; text-transform:uppercase;
+  opacity:0;
+}
+body.loaded .scrollcue{ animation:fadeUp .8s ease 1.7s forwards, bob 2.4s ease-in-out 2.5s infinite; }
+@keyframes bob{ 0%,100%{ transform:translate(-50%,0);} 50%{ transform:translate(-50%,8px);} }
+.scrollcue i{ width:1px; height:34px; background:linear-gradient(var(--brass), transparent); display:block; }
+
+/* rotating wax-seal badge */
+.seal{
+  position:absolute; z-index:2; right:clamp(14px,4vw,52px); bottom:clamp(70px,10vh,120px);
+  width:118px; height:118px; opacity:0;
+}
+body.loaded .seal{ animation:fadeUp 1s ease 1.9s forwards; }
+.seal__ring{ width:100%; height:100%; animation:spin 42s linear infinite; }
+.seal__coin{
+  position:absolute; top:0; right:0; bottom:0; left:0; margin:auto; width:56px; height:56px;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,.6));
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+@media (max-width:760px){ .seal{ display:none; } }
+
+/* =================== BRAND BEATS =================== */
+.beat{ position:relative; min-height:100vh; min-height:100svh; display:flex; align-items:center; overflow:hidden; }
+.beat__bg{ position:absolute; top:-8%; right:-8%; bottom:-8%; left:-8%; z-index:0; will-change:transform; }
+.beat__bg img{ width:100%; height:100%; object-fit:cover; transform:scale(1.14); }
+.beat__scrim{ position:absolute; top:0; right:0; bottom:0; left:0; z-index:1; }
+.beat--left .beat__scrim{ background:linear-gradient(90deg, rgba(10,9,8,.96) 0%, rgba(10,9,8,.78) 32%, rgba(10,9,8,.35) 58%, rgba(10,9,8,.15) 100%); }
+.beat--right .beat__scrim{ background:linear-gradient(270deg, rgba(10,9,8,.96) 0%, rgba(10,9,8,.78) 32%, rgba(10,9,8,.35) 58%, rgba(10,9,8,.15) 100%); }
+
+.beat__inner{ position:relative; z-index:2; width:100%; }
+.beat__panel{ max-width:520px; }
+.beat--right .beat__panel{ margin-left:auto; text-align:right; }
+.beat--right .eyebrow{ flex-direction:row-reverse; }
+
+.beat__title{ font-size:clamp(2.6rem, 7vw, 4.6rem); line-height:.96; margin:14px 0 22px; }
+.beat__copy{ color:var(--bone-dim); font-size:1.02rem; max-width:46ch; }
+.beat--right .beat__copy{ margin-left:auto; }
+
+.reveal{ opacity:0; transform:translateY(34px); transition:opacity .9s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1); }
+.reveal.is-visible{ opacity:1; transform:translateY(0); }
+
+@media (max-width:760px){
+  .beat--left .beat__scrim, .beat--right .beat__scrim{ background:linear-gradient(180deg, rgba(10,9,8,.55) 0%, rgba(10,9,8,.75) 55%, rgba(10,9,8,.97) 100%); }
+  .beat__panel, .beat--right .beat__panel{ max-width:100%; text-align:left !important; margin-left:0 !important; }
+  .beat--right .eyebrow{ flex-direction:row; }
+  .beat--right .beat__copy{ margin-left:0; }
+  .beat{ align-items:flex-end; padding-bottom:64px; }
+}
+
+/* =================== SOCIAL STRIP =================== */
+.social{ background:var(--char); position:relative; padding:96px 0; overflow:hidden; }
+.social::before{
+  content:""; position:absolute; top:0; right:0; bottom:0; left:0;
+  background:radial-gradient(60% 90% at 85% 0%, rgba(203,162,78,.08), transparent 60%);
+}
+.social__grid{ position:relative; display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:center; }
+.social__title{ font-size:clamp(2rem,4.4vw,2.9rem); margin:14px 0 16px; }
+.social__copy{ color:var(--bone-dim); max-width:46ch; }
+.social__row{ display:flex; flex-wrap:wrap; gap:14px; margin-top:28px; }
+
+.chip{
+  display:flex; align-items:center; gap:12px; padding:12px 18px 12px 12px;
+  border:1px solid var(--brass-dim); background:rgba(203,162,78,.04);
+  text-decoration:none; color:var(--bone); position:relative;
+  transition:border-color .25s ease, background .25s ease, transform .25s ease;
+}
+.chip:hover{ border-color:var(--brass); background:rgba(203,162,78,.1); transform:translateY(-2px); }
+.chip__badge{
+  width:38px; height:38px; border-radius:50%; flex:none;
+  display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(circle at 32% 28%, var(--brass-hi), var(--brass) 45%, var(--brass-dim) 100%);
+  color:#1a1509; font-family:var(--f-body); font-weight:700; font-size:.68rem; letter-spacing:.02em;
+}
+.chip__label{ display:flex; flex-direction:column; line-height:1.15; }
+.chip__label b{ font-size:.86rem; font-weight:600; }
+.chip__label small{ font-size:.66rem; letter-spacing:.14em; text-transform:uppercase; color:var(--bone-dim); }
+
+.social__panel{
+  border:1px solid var(--brass-dim); padding:34px; background:var(--char-2);
+  position:relative;
+}
+.social__panel::before{ content:"WORK HARD · STAY CROOKED"; position:absolute; top:-11px; left:24px; background:var(--char-2); padding:0 10px; font-family:var(--f-body); font-size:.62rem; letter-spacing:.24em; color:var(--brass); }
+.social__panel p{ color:var(--bone-dim); font-size:.92rem; }
+.social__panel strong{ color:var(--bone); display:block; font-family:var(--f-display); font-size:1.5rem; letter-spacing:.03em; margin-bottom:10px; }
+
+@media (max-width:900px){ .social__grid{ grid-template-columns:1fr; gap:40px; } }
+
+/* =================== VOTE SECTION =================== */
+.vote{ position:relative; padding:110px 0 130px; background:
+  radial-gradient(70% 50% at 50% 0%, rgba(209,72,31,.09), transparent 60%), var(--ink); }
+.vote__head{ text-align:center; max-width:640px; margin:0 auto 60px; }
+.vote__head .eyebrow{ justify-content:center; }
+.vote__head .eyebrow::before{ display:none; }
+.vote__title{ font-size:clamp(2.6rem,7vw,4.4rem); margin:14px 0 18px; }
+.vote__copy{ color:var(--bone-dim); }
+
+.live{ display:inline-flex; align-items:center; gap:8px; margin-top:22px; font-size:.72rem; letter-spacing:.2em; text-transform:uppercase; color:var(--bone-dim); }
+.live__dot{ width:8px; height:8px; border-radius:50%; background:var(--ember); box-shadow:0 0 0 0 rgba(209,72,31,.6); animation:pulse 1.8s ease-in-out infinite; }
+@keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(209,72,31,.55);} 70%{ box-shadow:0 0 0 9px rgba(209,72,31,0);} 100%{ box-shadow:0 0 0 0 rgba(209,72,31,0);} }
+
+.grid-cards{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(250px,1fr)); gap:26px;
+  max-width:1180px; margin:0 auto; padding-inline:var(--edge);
+}
+
+.card{
+  position:relative; background:var(--char); border:1px solid #2a2419;
+  display:flex; flex-direction:column;
+  transition:border-color .3s ease, transform .3s ease, box-shadow .3s ease;
+}
+.card:hover{ transform:translateY(-4px); border-color:var(--brass-dim); box-shadow:0 20px 40px rgba(0,0,0,.45); }
+.card.is-picked{ border-color:var(--brass); box-shadow:0 0 0 1px var(--brass), 0 22px 50px rgba(203,162,78,.18); }
+
+.card__imgwrap{ position:relative; aspect-ratio:4/5; overflow:hidden; background:#000; }
+.card__imgwrap img{ width:100%; height:100%; object-fit:cover; object-position:top center; transition:transform .6s ease; }
+.card:hover .card__imgwrap img{ transform:scale(1.045); }
+.card__rank{
+  position:absolute; top:10px; left:10px; background:rgba(10,9,8,.72); border:1px solid var(--brass-dim);
+  color:var(--brass-hi); font-family:var(--f-body); font-weight:600; font-size:.68rem; letter-spacing:.1em;
+  padding:5px 9px;
+}
+.card__picked-flag{
+  position:absolute; top:10px; right:10px; background:var(--brass); color:#1a1509;
+  font-family:var(--f-body); font-weight:700; font-size:.62rem; letter-spacing:.1em;
+  padding:6px 10px; opacity:0; transform:translateY(-6px) scale(.9); transition:all .3s ease;
+}
+.card.is-picked .card__picked-flag{ opacity:1; transform:translateY(0) scale(1); }
+
+.card__body{ padding:20px 20px 22px; display:flex; flex-direction:column; gap:12px; flex:1; }
+.card__name{ font-family:var(--f-display); font-size:1.5rem; letter-spacing:.03em; color:var(--bone); }
+.card__tag{ font-size:.82rem; color:var(--bone-dim); flex:1; }
+
+.card__bar{ height:6px; background:#241f16; position:relative; overflow:hidden; }
+.card__bar span{ position:absolute; top:0; left:0; bottom:0; width:0%; background:linear-gradient(90deg, var(--brass-dim), var(--brass)); transition:width .7s cubic-bezier(.2,.8,.2,1); }
+.card__stats{ display:flex; justify-content:space-between; font-size:.72rem; letter-spacing:.06em; color:var(--bone-dim); }
+.card__stats b{ color:var(--brass-hi); font-weight:600; }
+
+.card__vote{
+  margin-top:4px; position:relative; overflow:visible;
+  font-family:var(--f-body); font-weight:600; letter-spacing:.14em; text-transform:uppercase; font-size:.78rem;
+  color:var(--bone); background:var(--char-2); border:1px solid var(--brass-dim);
+  padding:13px 16px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+  transition:background .25s ease, border-color .25s ease, color .25s ease;
+}
+.card__vote:hover{ border-color:var(--brass); background:rgba(203,162,78,.08); }
+.card.is-picked .card__vote{ background:var(--ember); border-color:var(--ember); color:#fff; }
+.card.is-picked .card__vote:hover{ filter:brightness(1.06); }
+
+.card--locked{ opacity:.72; }
+.card--locked .card__imgwrap{
+  display:flex; align-items:center; justify-content:center;
+  background:repeating-linear-gradient(135deg, #16130d 0 14px, #1b170f 14px 28px);
+}
+.card--locked .card__imgwrap img{ width:46px; height:46px; object-fit:contain; opacity:.5; filter:grayscale(1); }
+.card--locked .card__vote{ cursor:not-allowed; opacity:.5; }
+.card--locked .card__vote:hover{ border-color:var(--brass-dim); background:var(--char-2); }
+
+/* ember particles for vote burst */
+.ember-particle{
+  position:fixed; z-index:500; width:5px; height:5px; border-radius:50%;
+  background:radial-gradient(circle, var(--brass-hi), var(--ember) 60%, transparent 70%);
+  pointer-events:none; will-change:transform, opacity;
+}
+
+.vote__foot{ text-align:center; margin-top:50px; color:var(--bone-dim); font-size:.85rem; }
+.vote__foot em{ font-style:normal; color:var(--brass); }
+
+/* =================== FOOTER =================== */
+footer{ background:var(--char); padding:70px 0 34px; position:relative; }
+.foot__top{ display:flex; flex-wrap:wrap; gap:40px; justify-content:space-between; align-items:flex-start; padding-bottom:44px; border-bottom:1px solid #2a2419; }
+.foot__brand{ display:flex; align-items:center; gap:14px; }
+.foot__brand img{ height:46px; }
+.foot__brand div{ display:flex; flex-direction:column; }
+.foot__brand strong{ font-family:var(--f-display); font-size:1.3rem; letter-spacing:.04em; }
+.foot__brand span{ font-size:.72rem; letter-spacing:.14em; color:var(--brass); text-transform:uppercase; margin-top:2px; }
+
+.foot__social{ display:flex; gap:10px; flex-wrap:wrap; }
+
+.foot__badges{ display:flex; flex-wrap:wrap; gap:26px; padding:34px 0; justify-content:center; text-align:center; }
+.foot__badges div{ font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--bone-dim); display:flex; flex-direction:column; align-items:center; gap:8px; max-width:150px; }
+.foot__badges .ico{ width:20px; height:20px; color:var(--brass); }
+
+.foot__bottom{ display:flex; flex-wrap:wrap; gap:14px; justify-content:space-between; font-size:.72rem; color:var(--bone-dim); padding-top:24px; }
+.foot__bottom a{ text-decoration:none; color:var(--bone-dim); }
+.foot__bottom a:hover{ color:var(--brass); }
+.foot__notice{
+  max-width:760px; margin:0 auto 30px; text-align:center; font-size:.78rem; color:var(--bone-dim);
+  border:1px dashed var(--brass-dim); padding:14px 18px;
+}
+.foot__notice b{ color:var(--brass); }
+
+@media (max-width:640px){ .foot__top{ flex-direction:column; } .foot__badges{ gap:20px; } }
+</style>
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<!-- ================= NAV ================= -->
+<header class="nav" id="siteNav">
+  <a class="nav__brand" href="#top">
+    <img src="images/coin.png" alt="" width="34" height="34" loading="eager">
+    <span>CROOKED COIN</span>
+  </a>
+  <nav class="nav__social" aria-label="Social media (coming soon)">
+    <a class="badge-link" href="#" title="TikTok — coming soon" aria-label="TikTok, coming soon">TT</a>
+    <a class="badge-link" href="#" title="Instagram — coming soon" aria-label="Instagram, coming soon">IG</a>
+    <a class="badge-link" href="#" title="YouTube — coming soon" aria-label="YouTube, coming soon">YT</a>
+    <a class="badge-link" href="#" title="Facebook — coming soon" aria-label="Facebook, coming soon">FB</a>
+  </nav>
+</header>
+
+<!-- ================= HERO ================= -->
+<section class="hero" id="top">
+  <div class="hero__bg" data-speed="0.35">
+    <img src="images/bg-hero.jpg" alt="Welder at work throwing sparks in a dark shop" loading="eager">
+  </div>
+  <div class="hero__scrim"></div>
+  <div class="hero__spark"></div>
+
+  <div class="seal" aria-hidden="true">
+    <svg class="seal__ring" viewBox="0 0 200 200">
+      <defs><path id="sealPath" d="M 100,100 m -82,0 a 82,82 0 1,1 164,0 a 82,82 0 1,1 -164,0"/></defs>
+      <text font-family="Oswald" font-weight="600" font-size="13.5" letter-spacing="3" fill="var(--brass)">
+        <textPath href="#sealPath" startOffset="0%">WORK HARD · STAY CROOKED · WORK HARD · STAY CROOKED ·</textPath>
+      </text>
+    </svg>
+    <img class="seal__coin" src="images/coin.png" alt="">
+  </div>
+
+  <div class="hero__content">
+    <img class="hero__mark" src="images/wordmark.png" alt="Crooked Coin Apparel">
+    <p class="hero__tag">Built for the Misfits</p>
+    <p class="hero__copy">Premium apparel inspired by blue-collar grit, custom culture, and people who never fit the mold. The shop isn't open yet — but the first drop is already being decided.</p>
+    <div class="hero__cta">
+      <a href="#vote" class="btn">Vote On The First Drop</a>
+      <a href="#story" class="btn btn--ghost">See The Brand</a>
+    </div>
+  </div>
+
+  <a href="#story" class="scrollcue" aria-label="Scroll down">
+    <span>Scroll</span>
+    <i></i>
+  </a>
+</section>
+
+<div class="seam" aria-hidden="true"></div>
+
+<!-- ================= BRAND BEAT 1 ================= -->
+<section class="beat beat--left" id="story">
+  <div class="beat__bg" data-speed="0.28">
+    <img src="images/bg-built.jpg" alt="Custom lowrider parked at night" loading="lazy">
+  </div>
+  <div class="beat__scrim"></div>
+  <div class="beat__inner container">
+    <div class="beat__panel reveal">
+      <span class="eyebrow">The Standard</span>
+      <h2 class="beat__title stamped">Built Different</h2>
+      <p class="beat__copy">Every stitch answers to a shop floor, not a boardroom. Heavyweight cotton, hand-finished art, prints made to outlast the bike you rode in on. If it can't take a beating, it doesn't wear the coin.</p>
+    </div>
+  </div>
+</section>
+
+<div class="seam" aria-hidden="true"></div>
+
+<!-- ================= BRAND BEAT 2 ================= -->
+<section class="beat beat--right">
+  <div class="beat__bg" data-speed="0.28">
+    <img src="images/bg-ride.jpg" alt="Rider on a bobber motorcycle facing a city skyline" loading="lazy">
+  </div>
+  <div class="beat__scrim"></div>
+  <div class="beat__inner container">
+    <div class="beat__panel reveal">
+      <span class="eyebrow">The Attitude</span>
+      <h2 class="beat__title stamped">Live Unapologetic</h2>
+      <p class="beat__copy">This isn't a costume for the weekend. Crooked Coin rides for the ones who work with their hands, wrench past dark, and never asked permission to take up space. Wear it like you mean it.</p>
+    </div>
+  </div>
+</section>
+
+<div class="seam" aria-hidden="true"></div>
+
+<!-- ================= BRAND BEAT 3 ================= -->
+<section class="beat beat--left">
+  <div class="beat__bg" data-speed="0.28">
+    <img src="images/bg-fortune.jpg" alt="Illustrated skeleton artwork over a city skyline" loading="lazy">
+  </div>
+  <div class="beat__scrim"></div>
+  <div class="beat__inner container">
+    <div class="beat__panel reveal">
+      <span class="eyebrow">The Ethos</span>
+      <h2 class="beat__title stamped">Fortune Favors<br>The Crooked</h2>
+      <p class="beat__copy">Luck isn't given, it's taken. Every design carries the skull-and-coin — a reminder that the odds favor the ones bold enough to flip them. Crooked by choice, never by accident.</p>
+    </div>
+  </div>
+</section>
+
+<div class="seam" aria-hidden="true"></div>
+
+<!-- ================= SOCIAL / FOLLOW ================= -->
+<section class="social">
+  <div class="container social__grid">
+    <div class="reveal">
+      <span class="eyebrow">The Build Is Live</span>
+      <h2 class="social__title stamped">Follow The Founding</h2>
+      <p class="social__copy">We're building the following before we build the shop. Placeholder links for now — real handles drop as soon as they're live, so check back.</p>
+      <div class="social__row">
+        <a class="chip" href="#" aria-label="TikTok, coming soon">
+          <span class="chip__badge">TT</span>
+          <span class="chip__label"><b>TikTok</b><small>Coming soon</small></span>
+        </a>
+        <a class="chip" href="#" aria-label="Instagram, coming soon">
+          <span class="chip__badge">IG</span>
+          <span class="chip__label"><b>Instagram</b><small>Coming soon</small></span>
+        </a>
+        <a class="chip" href="#" aria-label="YouTube, coming soon">
+          <span class="chip__badge">YT</span>
+          <span class="chip__label"><b>YouTube</b><small>Coming soon</small></span>
+        </a>
+        <a class="chip" href="#" aria-label="Facebook, coming soon">
+          <span class="chip__badge">FB</span>
+          <span class="chip__label"><b>Facebook</b><small>Coming soon</small></span>
+        </a>
+      </div>
+    </div>
+    <div class="social__panel reveal">
+      <strong>Crooked Coin Society</strong>
+      <p>Early followers get first look at drops, a say in future designs, and rewards once the shop opens. This vote is round one — there's more coming.</p>
+    </div>
+  </div>
+</section>
+
+<div class="seam" aria-hidden="true"></div>
+
+<!-- ================= VOTE ================= -->
+<section class="vote" id="vote">
+  <div class="vote__head reveal">
+    <span class="eyebrow">First Drop — You Decide</span>
+    <h2 class="vote__title stamped">Cast Your Vote</h2>
+    <p class="vote__copy">Three designs are fighting for a spot in the first drop. Pick the one that earns a place on your back — change your mind anytime before the polls close.</p>
+    <div class="live"><span class="live__dot"></span> Voting open · <span id="totalVotes">—</span> votes cast</div>
+  </div>
+
+  <div class="grid-cards" id="cardGrid"></div>
+
+  <p class="vote__foot reveal">Your pick is saved on this device only — this is a preview build. <em>More designs unlock as voting rounds continue.</em></p>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="container">
+    <div class="foot__notice">
+      <b>Heads up —</b> this is an early preview, not the live store. Votes help decide what actually gets printed first.
+    </div>
+    <div class="foot__top">
+      <div class="foot__brand">
+        <img src="images/coin.png" alt="">
+        <div>
+          <strong>CROOKED COIN</strong>
+          <span>Built for the Misfits</span>
+        </div>
+      </div>
+      <nav class="foot__social" aria-label="Social media (coming soon)">
+        <a class="badge-link" href="#" title="TikTok — coming soon">TT</a>
+        <a class="badge-link" href="#" title="Instagram — coming soon">IG</a>
+        <a class="badge-link" href="#" title="YouTube — coming soon">YT</a>
+        <a class="badge-link" href="#" title="Facebook — coming soon">FB</a>
+      </nav>
+    </div>
+
+    <div class="foot__badges">
+      <div><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 2l2.6 6.2L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.8z"/></svg>Premium Quality</div>
+      <div><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 2C7 6 4 10 4 14a8 8 0 0016 0c0-4-3-8-8-12z"/></svg>Designed In Canada</div>
+      <div><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 2l3 5 5 .7-3.6 3.6L17.5 17 12 14l-5.5 3 1.1-5.7L4 7.7 9 7z"/></svg>Limited Edition</div>
+      <div><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="5"/><path d="M8 13l-2 8 6-3 6 3-2-8"/></svg>Society Rewards</div>
+    </div>
+
+    <div class="foot__bottom">
+      <span>© <span id="year"></span> Crooked Coin Apparel. All rights reserved.</span>
+      <span>Preview build — full store launching soon.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- nav shadow on scroll ---------- */
+  var nav = document.getElementById('siteNav');
+  function onNavScroll(){
+    nav.classList.toggle('is-scrolled', window.scrollY > 40);
+  }
+  document.addEventListener('scroll', onNavScroll, {passive:true});
+  onNavScroll();
+
+  /* ---------- reveal-on-scroll ---------- */
+  var revealEls = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          entry.target.classList.add('is-visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, {threshold:.18, rootMargin:'0px 0px -8% 0px'});
+    revealEls.forEach(function(el){ io.observe(el); });
+  } else {
+    revealEls.forEach(function(el){ el.classList.add('is-visible'); });
+  }
+
+  /* ---------- parallax backgrounds ---------- */
+  var parallaxEls = Array.prototype.slice.call(document.querySelectorAll('[data-speed]'));
+  var ticking = false;
+
+  function updateParallax(){
+    ticking = false;
+    if(reduceMotion) return;
+    var vh = window.innerHeight;
+    parallaxEls.forEach(function(el){
+      var section = el.parentElement;
+      var rect = section.getBoundingClientRect();
+      if(rect.bottom < -100 || rect.top > vh + 100) return; // skip offscreen work
+      var speed = parseFloat(el.getAttribute('data-speed')) || 0.2;
+      var center = rect.top + rect.height/2 - vh/2;
+      var maxShift = Math.max(24, rect.height * 0.06);
+      var shift = Math.max(-maxShift, Math.min(maxShift, center * speed * -0.12));
+      el.style.transform = 'translate3d(0,' + shift.toFixed(1) + 'px,0)';
+    });
+  }
+  function requestParallax(){
+    if(!ticking){ window.requestAnimationFrame(updateParallax); ticking = true; }
+  }
+  document.addEventListener('scroll', requestParallax, {passive:true});
+  window.addEventListener('resize', requestParallax);
+  updateParallax();
+
+  /* ---------- reveal hero once fonts/images are ready enough ---------- */
+  window.addEventListener('load', function(){
+    document.body.classList.add('loaded');
+  });
+  // fallback in case load takes too long
+  setTimeout(function(){ document.body.classList.add('loaded'); }, 1200);
+
+  /* =========================================================
+     VOTING — data-driven so more designs can be added later
+     by simply adding objects to DESIGNS. LOCKED_SLOTS controls
+     how many "coming soon" ghost cards are appended.
+     ========================================================= */
+  var DESIGNS = [
+    { id:'built-different', name:'Built Different', tag:'Big graphic. Bigger attitude.', img:'images/tdesign1.jpg', base:182 },
+    { id:'raised-wrong',    name:'Raised Wrong',    tag:'For the ones who never colored inside the lines.', img:'images/tdesign2.jpg', base:211 },
+    { id:'crooked-classic', name:'Crooked Classic', tag:"Quiet 'til you get close.", img:'images/tdesign3.jpg', base:149 }
+  ];
+  var LOCKED_SLOTS = 2;
+
+  var STORE_KEY = 'cc_votes_v1';
+  var PICK_KEY  = 'cc_pick_v1';
+
+  function loadCounts(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    var init = {};
+    DESIGNS.forEach(function(d){ init[d.id] = d.base; });
+    return init;
+  }
+  function saveCounts(counts){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(counts)); }catch(e){}
+  }
+  function loadPick(){
+    try{ return localStorage.getItem(PICK_KEY); }catch(e){ return null; }
+  }
+  function savePick(id){
+    try{
+      if(id) localStorage.setItem(PICK_KEY, id);
+      else localStorage.removeItem(PICK_KEY);
+    }catch(e){}
+  }
+
+  var counts = loadCounts();
+  var pick = loadPick();
+
+  var grid = document.getElementById('cardGrid');
+  var totalEl = document.getElementById('totalVotes');
+
+  function buildCard(design, rankLabel){
+    var card = document.createElement('article');
+    card.className = 'card reveal';
+    card.dataset.id = design.id;
+    card.innerHTML =
+      '<div class="card__imgwrap">' +
+        '<span class="card__rank">' + rankLabel + '</span>' +
+        '<span class="card__picked-flag">Your Pick</span>' +
+        '<img src="' + design.img + '" alt="' + design.name + ' t-shirt design" loading="lazy">' +
+      '</div>' +
+      '<div class="card__body">' +
+        '<h3 class="card__name">' + design.name + '</h3>' +
+        '<p class="card__tag">' + design.tag + '</p>' +
+        '<div class="card__bar"><span></span></div>' +
+        '<div class="card__stats"><span><b class="voteCount">0</b> votes</span><span class="votePct">0%</span></div>' +
+        '<button class="card__vote" type="button">Vote For This</button>' +
+      '</div>';
+    return card;
+  }
+
+  function buildLockedCard(index){
+    var card = document.createElement('article');
+    card.className = 'card card--locked reveal';
+    card.innerHTML =
+      '<div class="card__imgwrap"><img src="images/coin.png" alt=""></div>' +
+      '<div class="card__body">' +
+        '<h3 class="card__name">Design ' + (DESIGNS.length + index) + '</h3>' +
+        '<p class="card__tag">Locked until this round of voting wraps up.</p>' +
+        '<div class="card__bar"><span></span></div>' +
+        '<div class="card__stats"><span>&nbsp;</span><span>Coming soon</span></div>' +
+        '<button class="card__vote" type="button" disabled>Coming Soon</button>' +
+      '</div>';
+    return card;
+  }
+
+  DESIGNS.forEach(function(d, i){ grid.appendChild(buildCard(d, '0' + (i+1))); });
+  for(var i=0;i<LOCKED_SLOTS;i++){ grid.appendChild(buildLockedCard(i+1)); }
+
+  // re-run reveal observer for freshly injected cards
+  if('IntersectionObserver' in window){
+    var io2 = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){ entry.target.classList.add('is-visible'); io2.unobserve(entry.target); }
+      });
+    }, {threshold:.12});
+    Array.prototype.slice.call(grid.querySelectorAll('.reveal')).forEach(function(el){ io2.observe(el); });
+  } else {
+    Array.prototype.slice.call(grid.querySelectorAll('.reveal')).forEach(function(el){ el.classList.add('is-visible'); });
+  }
+
+  function render(){
+    var total = 0;
+    DESIGNS.forEach(function(d){ total += counts[d.id] || 0; });
+    totalEl.textContent = total.toLocaleString();
+
+    var cards = Array.prototype.slice.call(grid.querySelectorAll('.card:not(.card--locked)'));
+    cards.forEach(function(card){
+      var id = card.dataset.id;
+      var n = counts[id] || 0;
+      var pct = total > 0 ? Math.round((n/total)*100) : 0;
+      card.querySelector('.voteCount').textContent = n.toLocaleString();
+      card.querySelector('.votePct').textContent = pct + '%';
+      card.querySelector('.card__bar span').style.width = pct + '%';
+      card.classList.toggle('is-picked', id === pick);
+      var btn = card.querySelector('.card__vote');
+      btn.textContent = (id === pick) ? 'Voted — Tap To Remove' : 'Vote For This';
+    });
+  }
+
+  function spawnEmbers(x, y){
+    if(reduceMotion) return;
+    var n = 16;
+    for(var i=0;i<n;i++){
+      var p = document.createElement('span');
+      p.className = 'ember-particle';
+      var angle = Math.random() * Math.PI * 2;
+      var dist = 40 + Math.random()*90;
+      var dx = Math.cos(angle) * dist;
+      var dy = Math.sin(angle) * dist - 30;
+      p.style.left = x + 'px';
+      p.style.top = y + 'px';
+      document.body.appendChild(p);
+      var anim = p.animate([
+        { transform:'translate(0,0) scale(1)', opacity:1 },
+        { transform:'translate(' + dx + 'px,' + dy + 'px) scale(.2)', opacity:0 }
+      ], { duration: 650 + Math.random()*300, easing:'cubic-bezier(.2,.8,.2,1)' });
+      anim.onfinish = function(el){ return function(){ el.remove(); }; }(p);
+    }
+  }
+
+  grid.addEventListener('click', function(e){
+    var btn = e.target.closest('.card__vote');
+    if(!btn || btn.disabled) return;
+    var card = btn.closest('.card');
+    var id = card.dataset.id;
+
+    if(pick === id){
+      // remove vote
+      counts[id] = Math.max(0, (counts[id]||0) - 1);
+      pick = null;
+    } else {
+      if(pick){ counts[pick] = Math.max(0, (counts[pick]||0) - 1); }
+      counts[id] = (counts[id]||0) + 1;
+      pick = id;
+      var rect = btn.getBoundingClientRect();
+      spawnEmbers(rect.left + rect.width/2, rect.top + rect.height/2);
+    }
+    savePick(pick);
+    saveCounts(counts);
+    render();
+  });
+
+  render();
+
+})();
+</script>
+</body>
+</html>
